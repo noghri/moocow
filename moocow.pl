@@ -3,6 +3,7 @@
  use strict;
  use warnings;
  use POE qw(Component::IRC);
+ use LWP::UserAgent;
 
  my $nickname = 'moocow_';
  my $ircname  = 'moooooooooo';
@@ -10,7 +11,6 @@
 
  my @channels = ('#threerivers');
 
- # We create a new PoCo-IRC object
  my $irc = POE::Component::IRC->spawn(
     nick => $nickname,
     ircname => $ircname,
@@ -63,6 +63,9 @@
      if ( my ($entertain) = $what =~ /^!entertain/ ) {
          $irc->yield( ctcp => $channel => "ACTION punches KtuLi in the throat." );
      }
+     if ( my ($weather) = $what =~ /^.wz (.*)/ ) {
+        weather($weather,$channel);
+     }
      return;
  }
 
@@ -82,3 +85,39 @@
      print join ' ', @output, "\n";
      return;
  }
+
+sub weather {
+
+my @prams = @_;
+
+my $zip = $prams[0];
+my $chan = $prams[1];
+my $apikey = "bdf8d52c20b509c5";
+my $url = "http://api.wunderground.com/api/$apikey/conditions/q/$zip.json";
+
+my $ua = LWP::UserAgent->new;
+my $req = HTTP::Request->new(GET => $url);
+my $res = $ua->request($req);
+
+my $tmp="";
+my $conditions;
+my $temp;
+my $humidity;
+my $wind_speed;
+my $wind_dir;
+
+my @data = split /\n/, $res->content;
+
+foreach my $line(@data) {
+
+   chomp($line);
+   if( ($tmp) = $line =~ /weather\":\"(.*)\"/ ) { $conditions = $tmp; }
+   if( ($tmp) = $line =~ /temperature_string\":\"(.*)\"/ ) { $temp = $tmp;}
+   if( ($tmp) = $line =~ /relative_humidity\":\"(.*)\"/ ) { $humidity = $tmp;}
+   if( ($tmp) = $line =~ /wind_string\":\"(.*)\"/ ) { $wind_speed = $tmp;}
+   if( ($tmp) = $line =~ /wind_dir\":\"(.*)\"/ ) { $wind_dir = $tmp;}
+   
+}
+   $irc->yield( privmsg => $chan => "Weather for $zip: Conditions: $conditions Temp: $temp Humidity: $humidity Wind Speed: $wind_speed Wind Direction: $wind_dir" );
+
+}
