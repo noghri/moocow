@@ -8,7 +8,7 @@
  my $nickname = 'moocow_';
  my $ircname  = 'moooooooooo';
  my $server   = 'irc.teksavvy.ca';
-
+ 
  my @channels = ('#threerivers');
 
  my $irc = POE::Component::IRC->spawn(
@@ -98,26 +98,45 @@ my $url = "http://api.wunderground.com/api/$apikey/conditions/q/$zip.json";
 my $ua = LWP::UserAgent->new;
 my $req = HTTP::Request->new(GET => $url);
 my $res = $ua->request($req);
-
-my $tmp="";
-my $conditions;
-my $temp;
-my $humidity;
-my $wind_speed;
-my $wind_dir;
-
-my @data = split /\n/, $res->content;
-
-foreach my $line(@data) {
-
-   chomp($line);
-   if( ($tmp) = $line =~ /weather\":\"(.*)\"/ ) { $conditions = $tmp; }
-   if( ($tmp) = $line =~ /temperature_string\":\"(.*)\"/ ) { $temp = $tmp;}
-   if( ($tmp) = $line =~ /relative_humidity\":\"(.*)\"/ ) { $humidity = $tmp;}
-   if( ($tmp) = $line =~ /wind_string\":\"(.*)\"/ ) { $wind_speed = $tmp;}
-   if( ($tmp) = $line =~ /wind_dir\":\"(.*)\"/ ) { $wind_dir = $tmp;}
-   
+if (is_valid_zipcode($zip) == 1){
+     $irc->yield( privmsg => $chan => "invalid zip $zip");
 }
-   $irc->yield( privmsg => $chan => "Weather for $zip: Conditions: $conditions Temp: $temp Humidity: $humidity Wind Speed: $wind_speed Wind Direction: $wind_dir" );
+else {
 
+    my $tmp="";
+    my $conditions;
+    my $temp;
+    my $humidity;
+    my $wind_speed;
+    my $wind_dir;
+
+    my @data = split /\n/, $res->content;
+
+   foreach my $line(@data) {
+
+       chomp($line);
+       if( ($tmp) = $line =~ /weather\":\"(.*)\"/ ) { $conditions = $tmp; }
+       if( ($tmp) = $line =~ /temperature_string\":\"(.*)\"/ ) { $temp = $tmp;}
+       if( ($tmp) = $line =~ /relative_humidity\":\"(.*)\"/ ) { $humidity = $tmp;}
+       if( ($tmp) = $line =~ /wind_string\":\"(.*)\"/ ) { $wind_speed = $tmp;}
+       if( ($tmp) = $line =~ /wind_dir\":\"(.*)\"/ ) { $wind_dir = $tmp;}
+   
+    }
+   $irc->yield( privmsg => $chan => "Weather for $zip: Conditions: $conditions Temp: $temp Humidity: $humidity Wind Speed: $wind_speed Wind Direction: $wind_dir" );
+   }
+}
+
+
+sub is_valid_zipcode {
+
+    my @prams = @_;
+
+    my $zip = $prams[0];
+
+    if ($zip =~ /^[0-9]{5}(?:-[0-9]{4})?$/)
+    {
+        return 0;
+    }
+
+    return 1;
 }
