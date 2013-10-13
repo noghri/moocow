@@ -66,6 +66,9 @@
      if ( my ($weather) = $what =~ /^.wz (.*)/ ) {
         weather($weather,$channel);
      }
+     if ( my ($coinflip) = $what = ~/^!flip/ ) {
+         $irc->yield( privmsg => $channel => coinflip());
+     }
      return;
  }
 
@@ -139,4 +142,15 @@ sub is_valid_zipcode {
     }
 
     return 1;
+}
+
+
+sub coinflip {
+    my $range = 1000;
+    my $random_num = int(rand($range));
+   
+    if ($random_num % 2 == 0) {
+        return "Heads!";
+    }
+    return "Tails";
 }
