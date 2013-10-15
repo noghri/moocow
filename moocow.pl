@@ -73,6 +73,9 @@
      elsif ( my ($coinflip) = $what =~ /^!flip/ ) {
          $irc->yield( privmsg => $channel => coinflip());
      }
+     elsif ( my ($gogl) = $what =~ /^http:\/\/(.*)/ ) {
+         $irc->yield( privmsg => $channel => gogl($gogl,$channel));
+     }
      return;
  }
 
@@ -189,4 +192,30 @@ sub bot_reconnect {
   my $kernel = $_[KERNEL];
   $kernel->delay(autoping => undef);
   $kernel->delay(_start => 10);
+}
+
+sub gogl {
+
+    my @prams = @_;
+    my $url = $prams[0];
+    my $chan = $prams[1];
+    my $apikey = readconfig('goglkey');
+    my $goglurl = "https://www.googleapis.com/urlshortener/v1/url?longUrl=$url&key=$apikey";
+
+
+    my $ua = LWP::UserAgent->new;
+    my $req = HTTP::Request->new(GET => $goglurl);
+
+    my $res = $ua->request($req);  
+
+    my @data = split /\n/, $res->content;
+
+    foreach my $line(@data) {
+
+       chomp($line);
+print "-$line-\n";
+       if ($line =~ /\"id\": \"(.*)\"/) { return $1; }
+
+    }
+
 }
