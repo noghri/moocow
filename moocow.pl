@@ -67,7 +67,7 @@
      elsif ( my ($entertain) = $what =~ /^!entertain/ ) {
          $irc->yield( ctcp => $channel => "ACTION punches KtuLi in the throat." );
      }
-     elsif ( my ($weather) = $what =~ /^.wz (.*)/ ) {
+     elsif ( my ($weather) = $what =~ /^\.wz (.*)/ ) {
         weather($weather,$channel);
      }
      elsif ( my ($coinflip) = $what =~ /^!flip/ ) {
