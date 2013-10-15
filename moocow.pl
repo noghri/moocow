@@ -5,12 +5,11 @@
  use POE qw(Component::IRC);
  use LWP::UserAgent;
 
- my $nickname = 'moocow2_';
- my $ircname  = 'moooooooooo2';
+ my $nickname = 'moocow_';
+ my $ircname  = 'moooooooooo';
  my $server   = 'irc.teksavvy.ca';
  
- #my @channels = ('#threerivers');
- my @channels = ('#drewfi');
+ my @channels = ('#threerivers');
 
  my $irc = POE::Component::IRC->spawn(
     nick => $nickname,
