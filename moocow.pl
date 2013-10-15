@@ -148,7 +148,7 @@ sub is_valid_zipcode {
         return 0;
     }
 
-   elsif ($zip =~ /^[ABCEGHJKLMNPRSTVXY]{1}\d{1}[A-Z]{1} *\d{1}[A-Z]{1}\d{1}$/) {
+   elsif (uc($zip) =~ /^[ABCEGHJKLMNPRSTVXY]{1}\d{1}[A-Z]{1} *\d{1}[A-Z]{1}\d{1}$/) {
         return 0;
     }
      
