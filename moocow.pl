@@ -5,11 +5,10 @@
  use POE qw(Component::IRC);
  use LWP::UserAgent;
 
- my $nickname = 'moocow_';
- my $ircname  = 'moooooooooo';
- my $server   = 'irc.teksavvy.ca';
- 
- my @channels = ('#threerivers');
+ my $nickname = readconfig('nickname');
+ my $ircname  = readconfig('ircname');
+ my $server   = readconfig('server');
+ my @channels = readconfig('channels');
 
  my $irc = POE::Component::IRC->spawn(
     nick => $nickname,
@@ -95,7 +94,7 @@ my @prams = @_;
 
 my $zip = $prams[0];
 my $chan = $prams[1];
-my $apikey = "bdf8d52c20b509c5";
+my $apikey = readconfig('apikey');
 my $url = "http://api.wunderground.com/api/$apikey/conditions/q/$zip.json";
 
 my $ua = LWP::UserAgent->new;
@@ -153,4 +152,23 @@ sub coinflip {
         return "Heads!";
     }
     return "Tails";
+}
+
+sub readconfig {
+
+    my @prams = @_;
+    my $configitem;
+
+    my $configtext = $prams[0];
+
+    open(FILE, "<", "moocow.config")
+        or die "Cannot open config file: $!";
+
+    while(<FILE>) {
+
+        if($_ =~ /^$configtext = (.*)/) { close(FILE); return $1; }
+
+    }
+    
+
 }
