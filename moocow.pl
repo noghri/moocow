@@ -200,11 +200,13 @@ sub gogl {
     my $url = $prams[0];
     my $chan = $prams[1];
     my $apikey = readconfig('goglkey');
-    my $goglurl = "https://www.googleapis.com/urlshortener/v1/url?longUrl=$url&key=$apikey";
+    my $goglurl = "https://www.googleapis.com/urlshortener/v1/url";
 
 
     my $ua = LWP::UserAgent->new;
-    my $req = HTTP::Request->new(GET => $goglurl);
+    my $req = HTTP::Request->new(POST => $goglurl);
+    $req->content_type('Content-Type: application/json');
+    $req->content("\"longUrl\": \"$url\"");
 
     my $res = $ua->request($req);  
 
