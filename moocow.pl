@@ -140,11 +140,14 @@ sub is_valid_zipcode {
 
     my $zip = $prams[0];
 
-    if ($zip =~ /^[0-9]{5}(?:-[0-9]{4})?$/)
-    {
+    if ($zip =~ /^[0-9]{5}(?:-[0-9]{4})?$/) {
         return 0;
     }
 
+   elsif ($zip =~ /^[ABCEGHJKLMNPRSTVXY]{1}\d{1}[A-Z]{1} *\d{1}[A-Z]{1}\d{1}$/) {
+        return 0;
+    }
+     
     return 1;
 }
 
