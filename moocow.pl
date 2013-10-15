@@ -106,6 +106,7 @@ my $apikey = readconfig('apikey');
 my $url = "http://api.wunderground.com/api/$apikey/conditions/q/$zip.json";
 
 my $ua = LWP::UserAgent->new;
+$ua->timeout(10);
 my $req = HTTP::Request->new(GET => $url);
 my $res = $ua->request($req);
 if (is_valid_zipcode($zip) == 1){
@@ -184,7 +185,6 @@ sub readconfig {
         if($_ =~ /^$configtext = (.*)/) { close(FILE); return $1; }
 
     }
-    
 
 }
 
@@ -204,9 +204,9 @@ sub gogl {
 
 
     my $ua = LWP::UserAgent->new;
+    $ua->timeout(10);
     my $req = HTTP::Request->new(POST => $goglurl);
-    $req->content_type('Content-Type: application/json');
-print "-$url-\n";
+    $req->content_type('application/json');
     $req->content("{\"longUrl\": \"$url\"}");
 
     my $res = $ua->request($req);  
@@ -216,7 +216,6 @@ print "-$url-\n";
     foreach my $line(@data) {
 
        chomp($line);
-print "-$line-\n";
        if ($line =~ /\"id\": \"(.*)\"/) { return $1; }
 
     }
