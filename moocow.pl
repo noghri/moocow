@@ -20,6 +20,11 @@
      package_states => [
          main => [ qw(_default _start irc_001 irc_public) ],
      ],
+ inline_states => {
+    irc_disconnected => \&bot_reconnect,
+    irc_error        => \&bot_reconnect,
+    irc_socketerr    => \&bot_reconnect,
+  },
      heap => { irc => $irc },
  );
 
@@ -171,4 +176,10 @@ sub readconfig {
     }
     
 
+}
+
+sub bot_reconnect {
+  my $kernel = $_[KERNEL];
+  $kernel->delay(autoping => undef);
+  $kernel->delay(_start => 10);
 }
