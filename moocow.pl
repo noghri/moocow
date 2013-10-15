@@ -4,6 +4,7 @@
  use warnings;
  use POE qw(Component::IRC);
  use LWP::UserAgent;
+ use WebService::GData::YouTube;
 
  my $nickname = readconfig('nickname');
  my $ircname  = readconfig('ircname');
@@ -73,8 +74,11 @@
      elsif ( my ($coinflip) = $what =~ /^!flip/ ) {
          $irc->yield( privmsg => $channel => coinflip());
      }
+#     elsif ( my ($youtube) = $what =~ /^(http:\/\/www.youtube.com\/.*)/ ) {
+#         youtube($youtube);
+#     }
      elsif ( my ($gogl) = $what =~ /^(http:\/\/.*)/ ) {
-         $irc->yield( privmsg => $channel => gogl($gogl,$channel));
+         $irc->yield( privmsg => $channel => gogl($gogl));
          $irc->yield( privmsg => $channel => title($gogl));
      }
      return;
@@ -199,7 +203,6 @@ sub gogl {
 
     my @prams = @_;
     my $url = $prams[0];
-    my $chan = $prams[1];
     my $goglurl = "https://www.googleapis.com/urlshortener/v1/url";
 
 
@@ -239,5 +242,23 @@ sub title {
         if(my ($title) = $line =~ m/<title>([a-zA-Z\/][^>]+)<\/title>/si) { return($title); }
 
     }
+
+}
+
+sub youtube {
+
+    my @prams = @_;
+    my $u2link=$prams[0];
+
+    my $shorturl = gogl($u2link);
+
+    $u2link =~ /http:\/\/www.youtube.com\/watch\?v=(.*)/;
+
+    my $yt = new WebService::GData::YouTube();
+
+    my $video = $yt->get_video_by_id($1);
+
+    $video=shift;
+    print "$video->view_count\n";
 
 }
