@@ -73,7 +73,7 @@
      elsif ( my ($coinflip) = $what =~ /^!flip/ ) {
          $irc->yield( privmsg => $channel => coinflip());
      }
-     elsif ( my ($gogl) = $what =~ /^http:\/\/(.*)/ ) {
+     elsif ( my ($gogl) = $what =~ /^(http:\/\/.*)/ ) {
          $irc->yield( privmsg => $channel => gogl($gogl,$channel));
      }
      return;
@@ -206,7 +206,8 @@ sub gogl {
     my $ua = LWP::UserAgent->new;
     my $req = HTTP::Request->new(POST => $goglurl);
     $req->content_type('Content-Type: application/json');
-    $req->content("\"longUrl\": \"$url\"");
+print "-$url-\n";
+    $req->content("{\"longUrl\": \"$url\"}");
 
     my $res = $ua->request($req);  
 
