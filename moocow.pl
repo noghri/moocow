@@ -75,6 +75,7 @@
      }
      elsif ( my ($gogl) = $what =~ /^(http:\/\/.*)/ ) {
          $irc->yield( privmsg => $channel => gogl($gogl,$channel));
+         $irc->yield( privmsg => $channel => title($gogl));
      }
      return;
  }
@@ -199,7 +200,6 @@ sub gogl {
     my @prams = @_;
     my $url = $prams[0];
     my $chan = $prams[1];
-    my $apikey = readconfig('goglkey');
     my $goglurl = "https://www.googleapis.com/urlshortener/v1/url";
 
 
@@ -217,6 +217,26 @@ sub gogl {
 
        chomp($line);
        if ($line =~ /\"id\": \"(.*)\"/) { return $1; }
+
+    }
+
+}
+
+sub title {
+
+    my @prams = @_;
+    my $url = $prams[0];
+
+    my $ua = LWP::UserAgent->new;
+    $ua->timeout(10);
+    my $req = HTTP::Request->new(GET => $url);
+    my $res = $ua->request($req);
+
+    my @data = split /\n/, $res->content;
+
+    foreach my $line(@data) {
+
+        if(my ($title) = $line =~ m/<title>([a-zA-Z\/][^>]+)<\/title>/si) { return($title); }
 
     }
 
