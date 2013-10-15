@@ -5,11 +5,12 @@
  use POE qw(Component::IRC);
  use LWP::UserAgent;
 
- my $nickname = 'moocow_';
- my $ircname  = 'moooooooooo';
+ my $nickname = 'moocow2_';
+ my $ircname  = 'moooooooooo2';
  my $server   = 'irc.teksavvy.ca';
  
- my @channels = ('#threerivers');
+ #my @channels = ('#threerivers');
+ my @channels = ('#drewfi');
 
  my $irc = POE::Component::IRC->spawn(
     nick => $nickname,
@@ -60,13 +61,13 @@
      if ( my ($moo) = $what =~ /^!moo/ ) {
          $irc->yield( privmsg => $channel => "$nick: mooooooo" );
      }
-     if ( my ($entertain) = $what =~ /^!entertain/ ) {
+     elsif ( my ($entertain) = $what =~ /^!entertain/ ) {
          $irc->yield( ctcp => $channel => "ACTION punches KtuLi in the throat." );
      }
-     if ( my ($weather) = $what =~ /^.wz (.*)/ ) {
+     elsif ( my ($weather) = $what =~ /^.wz (.*)/ ) {
         weather($weather,$channel);
      }
-     if ( my ($coinflip) = $what = ~/^!flip/ ) {
+     elsif ( my ($coinflip) = $what =~ /^!flip/ ) {
          $irc->yield( privmsg => $channel => coinflip());
      }
      return;
