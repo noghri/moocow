@@ -116,6 +116,9 @@ else {
     my $humidity;
     my $wind_speed;
     my $wind_dir;
+    my $full_city;
+    my $high;
+    my $low;
 
     my @data = split /\n/, $res->content;
 
@@ -127,9 +130,10 @@ else {
        if( ($tmp) = $line =~ /relative_humidity\":\"(.*)\"/ ) { $humidity = $tmp;}
        if( ($tmp) = $line =~ /wind_string\":\"(.*)\"/ ) { $wind_speed = $tmp;}
        if( ($tmp) = $line =~ /wind_dir\":\"(.*)\"/ ) { $wind_dir = $tmp;}
+       if( ($tmp) = $line =~ /full\":\"(.*)\"/ ) { $full_city = $tmp;}
    
     }
-   $irc->yield( privmsg => $chan => "Weather for $zip: Conditions: $conditions Temp: $temp Humidity: $humidity Wind Speed: $wind_speed Wind Direction: $wind_dir" );
+   $irc->yield( privmsg => $chan => "Weather for $full_city: Conditions: $conditions Temp: $temp Humidity: $humidity Wind Speed: $wind_speed Wind Direction: $wind_dir" );
    }
 }
 
