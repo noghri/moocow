@@ -18,6 +18,21 @@
     server  => $server,
  ) or die "Oh noooo! $!";
 
+my $cmd_actions ||= {
+       wz => sub { weather(@_) },
+       flip   => sub { coinflip(@_) },
+       entertain => sub { entertain(@_) },
+       moo => sub { moo(@_) },
+       http => sub { gogl(@_); }
+   };
+
+my @cmd_regex_array = map { qr{$_} } ('!(flip)',
+                                      '\.(wz) (.*)$',
+                                      '!(entertain)',
+                                      '!(moo)',
+                                      '(http):\/\/(.*)'
+                                      ); 
+
  POE::Session->create(
      package_states => [
          main => [ qw(_default _start irc_001 irc_public) ],
@@ -63,10 +78,12 @@
 
 
  sub irc_public {
+
      my ($sender, $who, $where, $what) = @_[SENDER, ARG0 .. ARG2];
      my $nick = ( split /!/, $who )[0];
      my $channel = $where->[0];
 
+<<<<<<< HEAD
      
 
 
@@ -89,6 +106,36 @@
          $irc->yield( privmsg => $channel => gogl($gogl));
          $irc->yield( privmsg => $channel => title($gogl));
      }
+=======
+     foreach my $re (@cmd_regex_array) {
+         if (my ($arg)= $what =~ $re) { 
+              print "actions\n";
+              print "\n\n";
+              #print $cmd_actions->{$arg}->($2, $channel, $nick );
+              print "\n arg:$arg two:$2 chan:$channel nick:$nick\n\n";
+              $cmd_actions->{$arg}->($2, $channel, $nick );
+        }
+     }      
+     #if ( my ($moo) = $what =~ /^!moo/ ) {
+     #    $irc->yield( privmsg => $channel => "$nick: mooooooo" );
+     #}
+     #elsif ( my ($entertain) = $what =~ /^!entertain/ ) {
+     #    $irc->yield( ctcp => $channel => "ACTION punches KtuLi in the throat." );
+#     }
+     #elsif ( my ($weather) = $what =~ /^\.wz (.*)/ ) {
+     #   weather($weather,$channel);
+     #}
+     #elsif ( my ($coinflip) = $what =~ /^!flip/ ) {
+     #    $irc->yield( privmsg => $channel => coinflip());
+     #}
+#     elsif ( my ($youtube) = $what =~ /^(http:\/\/www.youtube.com\/.*)/ ) {
+#         youtube($youtube);
+#     }
+#     elsif ( my ($gogl) = $what =~ /^(http:\/\/.*)/ ) {
+#         $irc->yield( privmsg => $channel => gogl($gogl));
+#         $irc->yield( privmsg => $channel => title($gogl));
+#     }
+>>>>>>> dispatch table
      return;
  }
 
@@ -112,7 +159,8 @@
 sub weather {
 
 my @prams = @_;
-
+print @prams; 
+print $prams[1];
 my $zip = $prams[0];
 my $chan = $prams[1];
 my $apikey = readconfig('apikey');
@@ -174,13 +222,32 @@ sub is_valid_zipcode {
 
 
 sub coinflip {
+    my @prams = @_;
+    my $channel = $prams[1]; 
+    my $result;
     my $range = 1000;
     my $random_num = int(rand($range));
    
     if ($random_num % 2 == 0) {
-        return "Heads!";
+        $result = "Heads!";
     }
-    return "Tails";
+    else {
+        $result = "Tails";
+   }
+   $irc->yield( privmsg => $channel => "$result"); 
+}
+
+sub entertain {
+    my @prams = @_;
+    my $channel = $prams[1]; 
+    $irc->yield( ctcp => $channel => "ACTION punches KtuLi in the throat." );
+}
+
+sub moo {
+    my @prams = @_;
+    my $channel = $prams[1]; 
+    my $nick = $prams[2];
+    $irc->yield( privmsg => $channel => "$nick: mooooooo" );
 }
 
 sub readconfig {
@@ -211,6 +278,7 @@ sub gogl {
 
     my @prams = @_;
     my $url = $prams[0];
+    print "\n\nurl is: $url";
     my $goglurl = "https://www.googleapis.com/urlshortener/v1/url";
 
 
@@ -221,7 +289,7 @@ sub gogl {
     $req->content("{\"longUrl\": \"$url\"}");
 
     my $res = $ua->request($req);  
-
+    print "res: $res";
     my @data = split /\n/, $res->content;
 
     foreach my $line(@data) {
