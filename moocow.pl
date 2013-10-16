@@ -10,7 +10,8 @@
  my $ircname  = readconfig('ircname');
  my $server   = readconfig('server');
  my @channels = readconfig('channels');
-
+ my $trigger = readconfig('trigger');
+ 
  my $irc = POE::Component::IRC->spawn(
     nick => $nickname,
     ircname => $ircname,
@@ -30,6 +31,7 @@
  );
 
  $poe_kernel->run();
+
 
  sub _start {
      my $heap = $_[HEAP];
@@ -57,21 +59,27 @@
      return;
  }
 
+ 
+
+
  sub irc_public {
      my ($sender, $who, $where, $what) = @_[SENDER, ARG0 .. ARG2];
      my $nick = ( split /!/, $who )[0];
      my $channel = $where->[0];
 
-     if ( my ($moo) = $what =~ /^!moo/ ) {
+     
+
+
+     if ( my ($moo) = $what =~ /^${trigger}moo/ ) {
          $irc->yield( privmsg => $channel => "$nick: mooooooo" );
      }
-     elsif ( my ($entertain) = $what =~ /^!entertain/ ) {
+     elsif ( my ($entertain) = $what =~ /^${trigger}entertain/ ) {
          $irc->yield( ctcp => $channel => "ACTION punches KtuLi in the throat." );
      }
-     elsif ( my ($weather) = $what =~ /^\.wz (.*)/ ) {
+     elsif ( my ($weather) = $what =~ /^${trigger}wz (.*)/ ) {
         weather($weather,$channel);
      }
-     elsif ( my ($coinflip) = $what =~ /^!flip/ ) {
+     elsif ( my ($coinflip) = $what =~ /^${trigger}flip/ ) {
          $irc->yield( privmsg => $channel => coinflip());
      }
      elsif ( my ($youtube) = $what =~ /^(http:\/\/www.youtube.com\/.*)/ ) {
