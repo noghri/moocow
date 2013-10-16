@@ -26,11 +26,11 @@ my $cmd_actions ||= {
        http => sub { gogl(@_); title(@_) }
    };
 
-my @cmd_regex_array = map { qr{$_} } ('!(flip)',
-                                      '\.(wz) (.*)$',
-                                      '!(entertain)',
-                                      '!(moo)',
-                                      '(http):\/\/(.*)'
+my @cmd_regex_array = map { qr{$_} } ("${trigger}(flip)",
+                                      "${trigger}(wz) (.*)\$",
+                                      "${trigger}(entertain)",
+                                      "${trigger}(moo)",
+                                      "(http):\/\/(.*)"
                                       );
 
  POE::Session->create(
