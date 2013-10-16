@@ -22,7 +22,7 @@ my $cmd_actions ||= {
        flip   => sub { coinflip(@_) }, 
        entertain => sub { entertain(@_) },
        moo => sub { moo(@_) },
-       http => sub { gogl(@_); }
+       http => sub { gogl(@_); title(@_) }
    };
 
 my @cmd_regex_array = map { qr{$_} } ('!(flip)', 
@@ -80,32 +80,10 @@ my @cmd_regex_array = map { qr{$_} } ('!(flip)',
 
      foreach my $re (@cmd_regex_array) {
          if (my ($arg)= $what =~ $re) { 
-              print "actions\n";
-              print "\n\n";
-              #print $cmd_actions->{$arg}->($2, $channel, $nick );
-              print "\n arg:$arg two:$2 chan:$channel nick:$nick\n\n";
               $cmd_actions->{$arg}->($2, $channel, $nick );
         }
-     }      
-     #if ( my ($moo) = $what =~ /^!moo/ ) {
-     #    $irc->yield( privmsg => $channel => "$nick: mooooooo" );
-     #}
-     #elsif ( my ($entertain) = $what =~ /^!entertain/ ) {
-     #    $irc->yield( ctcp => $channel => "ACTION punches KtuLi in the throat." );
-#     }
-     #elsif ( my ($weather) = $what =~ /^\.wz (.*)/ ) {
-     #   weather($weather,$channel);
-     #}
-     #elsif ( my ($coinflip) = $what =~ /^!flip/ ) {
-     #    $irc->yield( privmsg => $channel => coinflip());
-     #}
-#     elsif ( my ($youtube) = $what =~ /^(http:\/\/www.youtube.com\/.*)/ ) {
-#         youtube($youtube);
-#     }
-#     elsif ( my ($gogl) = $what =~ /^(http:\/\/.*)/ ) {
-#         $irc->yield( privmsg => $channel => gogl($gogl));
-#         $irc->yield( privmsg => $channel => title($gogl));
-#     }
+     }
+      
      return;
  }
 
@@ -129,8 +107,6 @@ my @cmd_regex_array = map { qr{$_} } ('!(flip)',
 sub weather {
 
 my @prams = @_;
-print @prams; 
-print $prams[1];
 my $zip = $prams[0];
 my $chan = $prams[1];
 my $apikey = readconfig('apikey');
@@ -245,12 +221,10 @@ sub bot_reconnect {
 }
 
 sub gogl {
-
+    
     my @prams = @_;
     my $url = $prams[0];
-    print "\n\nurl is: $url";
     my $goglurl = "https://www.googleapis.com/urlshortener/v1/url";
-
 
     my $ua = LWP::UserAgent->new;
     $ua->timeout(10);
@@ -259,7 +233,6 @@ sub gogl {
     $req->content("{\"longUrl\": \"$url\"}");
 
     my $res = $ua->request($req);  
-    print "res: $res";
     my @data = split /\n/, $res->content;
 
     foreach my $line(@data) {
@@ -275,14 +248,13 @@ sub title {
 
     my @prams = @_;
     my $url = $prams[0];
-
+    
     my $ua = LWP::UserAgent->new;
     $ua->timeout(10);
     my $req = HTTP::Request->new(GET => $url);
     my $res = $ua->request($req);
 
     my @data = split /\n/, $res->content;
-
     foreach my $line(@data) {
 
         if(my ($title) = $line =~ m/<title>([a-zA-Z\/][^>]+)<\/title>/si) { return($title); }
