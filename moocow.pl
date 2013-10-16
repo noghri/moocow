@@ -11,7 +11,7 @@
  my $server   = readconfig('server');
  my @channels = readconfig('channels');
  my $trigger = readconfig('trigger');
- 
+
  my $irc = POE::Component::IRC->spawn(
     nick => $nickname,
     ircname => $ircname,
@@ -23,7 +23,7 @@ my $cmd_actions ||= {
        flip   => sub { coinflip(@_) },
        entertain => sub { entertain(@_) },
        moo => sub { moo(@_) },
-       http => sub { gogl(@_); }
+       http => sub { gogl(@_); title(@_) }
    };
 
 my @cmd_regex_array = map { qr{$_} } ('!(flip)',
@@ -31,7 +31,7 @@ my @cmd_regex_array = map { qr{$_} } ('!(flip)',
                                       '!(entertain)',
                                       '!(moo)',
                                       '(http):\/\/(.*)'
-                                      ); 
+                                      );
 
  POE::Session->create(
      package_states => [
@@ -74,7 +74,7 @@ my @cmd_regex_array = map { qr{$_} } ('!(flip)',
      return;
  }
 
- 
+
 
 
  sub irc_public {
@@ -84,7 +84,7 @@ my @cmd_regex_array = map { qr{$_} } ('!(flip)',
      my $channel = $where->[0];
 
 <<<<<<< HEAD
-     
+
 
 
      if ( my ($moo) = $what =~ /^${trigger}moo/ ) {
@@ -108,14 +108,11 @@ my @cmd_regex_array = map { qr{$_} } ('!(flip)',
      }
 =======
      foreach my $re (@cmd_regex_array) {
-         if (my ($arg)= $what =~ $re) { 
-              print "actions\n";
-              print "\n\n";
-              #print $cmd_actions->{$arg}->($2, $channel, $nick );
-              print "\n arg:$arg two:$2 chan:$channel nick:$nick\n\n";
+         if (my ($arg)= $what =~ $re) {
               $cmd_actions->{$arg}->($2, $channel, $nick );
         }
-     }      
+<<<<<<< HEAD
+     }
      #if ( my ($moo) = $what =~ /^!moo/ ) {
      #    $irc->yield( privmsg => $channel => "$nick: mooooooo" );
      #}
@@ -136,6 +133,10 @@ my @cmd_regex_array = map { qr{$_} } ('!(flip)',
 #         $irc->yield( privmsg => $channel => title($gogl));
 #     }
 >>>>>>> dispatch table
+=======
+     }
+
+>>>>>>> more better routes
      return;
  }
 
@@ -159,8 +160,6 @@ my @cmd_regex_array = map { qr{$_} } ('!(flip)',
 sub weather {
 
 my @prams = @_;
-print @prams; 
-print $prams[1];
 my $zip = $prams[0];
 my $chan = $prams[1];
 my $apikey = readconfig('apikey');
@@ -196,7 +195,7 @@ else {
        if( ($tmp) = $line =~ /wind_string\":\"(.*)\"/ ) { $wind_speed = $tmp;}
        if( ($tmp) = $line =~ /wind_dir\":\"(.*)\"/ ) { $wind_dir = $tmp;}
        if( ($tmp) = $line =~ /full\":\"(.*)\"/ ) { $full_city = $tmp;}
-   
+
     }
    $irc->yield( privmsg => $chan => "Weather for $full_city: Conditions: $conditions Temp: $temp Humidity: $humidity Wind Speed: $wind_speed Wind Direction: $wind_dir" );
    }
@@ -216,36 +215,36 @@ sub is_valid_zipcode {
    elsif (uc($zip) =~ /^[ABCEGHJKLMNPRSTVXY]{1}\d{1}[A-Z]{1} *\d{1}[A-Z]{1}\d{1}$/) {
         return 0;
     }
-     
+
     return 1;
 }
 
 
 sub coinflip {
     my @prams = @_;
-    my $channel = $prams[1]; 
+    my $channel = $prams[1];
     my $result;
     my $range = 1000;
     my $random_num = int(rand($range));
-   
+
     if ($random_num % 2 == 0) {
         $result = "Heads!";
     }
     else {
         $result = "Tails";
    }
-   $irc->yield( privmsg => $channel => "$result"); 
+   $irc->yield( privmsg => $channel => "$result");
 }
 
 sub entertain {
     my @prams = @_;
-    my $channel = $prams[1]; 
+    my $channel = $prams[1];
     $irc->yield( ctcp => $channel => "ACTION punches KtuLi in the throat." );
 }
 
 sub moo {
     my @prams = @_;
-    my $channel = $prams[1]; 
+    my $channel = $prams[1];
     my $nick = $prams[2];
     $irc->yield( privmsg => $channel => "$nick: mooooooo" );
 }
@@ -278,9 +277,7 @@ sub gogl {
 
     my @prams = @_;
     my $url = $prams[0];
-    print "\n\nurl is: $url";
     my $goglurl = "https://www.googleapis.com/urlshortener/v1/url";
-
 
     my $ua = LWP::UserAgent->new;
     $ua->timeout(10);
@@ -288,8 +285,7 @@ sub gogl {
     $req->content_type('application/json');
     $req->content("{\"longUrl\": \"$url\"}");
 
-    my $res = $ua->request($req);  
-    print "res: $res";
+    my $res = $ua->request($req);
     my @data = split /\n/, $res->content;
 
     foreach my $line(@data) {
@@ -312,7 +308,6 @@ sub title {
     my $res = $ua->request($req);
 
     my @data = split /\n/, $res->content;
-
     foreach my $line(@data) {
 
         if(my ($title) = $line =~ m/<title>([a-zA-Z\/][^>]+)<\/title>/si) { return($title); }
