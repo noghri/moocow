@@ -74,9 +74,9 @@
      elsif ( my ($coinflip) = $what =~ /^!flip/ ) {
          $irc->yield( privmsg => $channel => coinflip());
      }
-#     elsif ( my ($youtube) = $what =~ /^(http:\/\/www.youtube.com\/.*)/ ) {
-#         youtube($youtube);
-#     }
+     elsif ( my ($youtube) = $what =~ /^(http:\/\/www.youtube.com\/.*)/ ) {
+         youtube($youtube,$channel);
+     }
      elsif ( my ($gogl) = $what =~ /^(http:\/\/.*)/ ) {
          $irc->yield( privmsg => $channel => gogl($gogl));
          $irc->yield( privmsg => $channel => title($gogl));
@@ -249,16 +249,22 @@ sub youtube {
 
     my @prams = @_;
     my $u2link=$prams[0];
+    my $chan=$prams[1];
 
     my $shorturl = gogl($u2link);
 
     $u2link =~ /http:\/\/www.youtube.com\/watch\?v=(.*)/;
+    my $u2=$1;
 
     my $yt = new WebService::GData::YouTube();
 
-    my $video = $yt->get_video_by_id($1);
+    my $video = $yt->get_video_by_id($u2);
 
-    $video=shift;
-    print "$video->view_count\n";
+    my $count = $video->view_count();
+    my $duration = $video->duration();
+    my $title = $video->title();
+
+    $irc->yield( privmsg => $chan => "YouTube: $title Duration: $duration s Views: $count");
+
 
 }
