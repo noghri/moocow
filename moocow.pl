@@ -115,7 +115,7 @@ sub quote {
     my $quotecmd = $prams[0];
     my $channel  = $prams[1];
     my $query =
-      q{SELECT quote, usermask, timestamp FROM quotes WHERE channel = ?};
+      q{SELECT quote, usermask, timestamp, quoteid FROM quotes WHERE channel = ?};
     my $sth;
 
     if (defined($quotecmd) && $quotecmd ne '' ) {
@@ -145,8 +145,9 @@ sub quote {
 
         my $qt = $res->{'quote'};
         my $um = $res->{'usermask'};
+        my $id = $res->{'quoteid'};
         my $ts = strftime("%Y-%m-%d %H:%M:%S", localtime($res->{'timestamp'}));
-        $irc->yield( privmsg => $channel => "$qt [$um] [$ts]" );
+        $irc->yield( privmsg => $channel => "Quote[$id] $qt [$um] [$ts]" );
         ++$count;
         # only return one result for now...
         return;
