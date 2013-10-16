@@ -41,6 +41,7 @@ my @cmd_regex_array = map { qr{$_} } ("${trigger}(flip)",
     irc_disconnected => \&bot_reconnect,
     irc_error        => \&bot_reconnect,
     irc_socketerr    => \&bot_reconnect,
+    irc_kick         => \&bot_rejoin,
   },
      heap => { irc => $irc },
  );
@@ -290,3 +291,15 @@ sub youtube {
 
 
 }
+
+sub bot_rejoin {
+     my $sender = $_[SENDER];
+
+     my $irc = $sender->get_heap();
+
+     # we join our channels
+     $irc->yield( join => $_ ) for @channels;
+     return;
+
+}
+
