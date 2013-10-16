@@ -183,7 +183,7 @@ sub coinflip {
         $result = "Heads!";
     }
     else {
-        $result = "Tails";
+        $result = "Tails!";
    }
    $irc->yield( privmsg => $channel => "$result");
 }
