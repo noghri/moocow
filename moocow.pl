@@ -11,12 +11,27 @@
  my $server   = readconfig('server');
  my @channels = readconfig('channels');
  my $trigger = readconfig('trigger');
- 
+
  my $irc = POE::Component::IRC->spawn(
     nick => $nickname,
     ircname => $ircname,
     server  => $server,
  ) or die "Oh noooo! $!";
+
+my $cmd_actions ||= {
+       wz => sub { weather(@_) },
+       flip   => sub { coinflip(@_) },
+       entertain => sub { entertain(@_) },
+       moo => sub { moo(@_) },
+       http => sub { gogl(@_); title(@_) }
+   };
+
+my @cmd_regex_array = map { qr{$_} } ('!(flip)',
+                                      '\.(wz) (.*)$',
+                                      '!(entertain)',
+                                      '!(moo)',
+                                      '(http):\/\/(.*)'
+                                      );
 
  POE::Session->create(
      package_states => [
@@ -59,35 +74,19 @@
      return;
  }
 
- 
+
 
 
  sub irc_public {
+
      my ($sender, $who, $where, $what) = @_[SENDER, ARG0 .. ARG2];
      my $nick = ( split /!/, $who )[0];
      my $channel = $where->[0];
 
-     
-
-
-     if ( my ($moo) = $what =~ /^${trigger}moo/ ) {
-         $irc->yield( privmsg => $channel => "$nick: mooooooo" );
-     }
-     elsif ( my ($entertain) = $what =~ /^${trigger}entertain/ ) {
-         $irc->yield( ctcp => $channel => "ACTION punches KtuLi in the throat." );
-     }
-     elsif ( my ($weather) = $what =~ /^${trigger}wz (.*)/ ) {
-        weather($weather,$channel);
-     }
-     elsif ( my ($coinflip) = $what =~ /^${trigger}flip/ ) {
-         $irc->yield( privmsg => $channel => coinflip());
-     }
-     elsif ( my ($youtube) = $what =~ /^(http:\/\/www.youtube.com\/.*)/ ) {
-         youtube($youtube,$channel);
-     }
-     elsif ( my ($gogl) = $what =~ /^(http:\/\/.*)/ ) {
-         $irc->yield( privmsg => $channel => gogl($gogl));
-         $irc->yield( privmsg => $channel => title($gogl));
+     foreach my $re (@cmd_regex_array) {
+         if (my ($arg)= $what =~ $re) {
+              $cmd_actions->{$arg}->($2, $channel, $nick );
+        }
      }
      return;
  }
@@ -112,7 +111,6 @@
 sub weather {
 
 my @prams = @_;
-
 my $zip = $prams[0];
 my $chan = $prams[1];
 my $apikey = readconfig('apikey');
@@ -148,7 +146,7 @@ else {
        if( ($tmp) = $line =~ /wind_string\":\"(.*)\"/ ) { $wind_speed = $tmp;}
        if( ($tmp) = $line =~ /wind_dir\":\"(.*)\"/ ) { $wind_dir = $tmp;}
        if( ($tmp) = $line =~ /full\":\"(.*)\"/ ) { $full_city = $tmp;}
-   
+
     }
    $irc->yield( privmsg => $chan => "Weather for $full_city: Conditions: $conditions Temp: $temp Humidity: $humidity Wind Speed: $wind_speed Wind Direction: $wind_dir" );
    }
@@ -168,19 +166,38 @@ sub is_valid_zipcode {
    elsif (uc($zip) =~ /^[ABCEGHJKLMNPRSTVXY]{1}\d{1}[A-Z]{1} *\d{1}[A-Z]{1}\d{1}$/) {
         return 0;
     }
-     
+
     return 1;
 }
 
 
 sub coinflip {
+    my @prams = @_;
+    my $channel = $prams[1];
+    my $result;
     my $range = 1000;
     my $random_num = int(rand($range));
-   
+
     if ($random_num % 2 == 0) {
-        return "Heads!";
+        $result = "Heads!";
     }
-    return "Tails";
+    else {
+        $result = "Tails";
+   }
+   $irc->yield( privmsg => $channel => "$result");
+}
+
+sub entertain {
+    my @prams = @_;
+    my $channel = $prams[1];
+    $irc->yield( ctcp => $channel => "ACTION punches KtuLi in the throat." );
+}
+
+sub moo {
+    my @prams = @_;
+    my $channel = $prams[1];
+    my $nick = $prams[2];
+    $irc->yield( privmsg => $channel => "$nick: mooooooo" );
 }
 
 sub readconfig {
@@ -208,11 +225,10 @@ sub bot_reconnect {
 }
 
 sub gogl {
-
+    
     my @prams = @_;
     my $url = $prams[0];
     my $goglurl = "https://www.googleapis.com/urlshortener/v1/url";
-
 
     my $ua = LWP::UserAgent->new;
     $ua->timeout(10);
@@ -220,8 +236,7 @@ sub gogl {
     $req->content_type('application/json');
     $req->content("{\"longUrl\": \"$url\"}");
 
-    my $res = $ua->request($req);  
-
+    my $res = $ua->request($req);
     my @data = split /\n/, $res->content;
 
     foreach my $line(@data) {
@@ -237,14 +252,13 @@ sub title {
 
     my @prams = @_;
     my $url = $prams[0];
-
+    
     my $ua = LWP::UserAgent->new;
     $ua->timeout(10);
     my $req = HTTP::Request->new(GET => $url);
     my $res = $ua->request($req);
 
     my @data = split /\n/, $res->content;
-
     foreach my $line(@data) {
 
         if(my ($title) = $line =~ m/<title>([a-zA-Z\/][^>]+)<\/title>/si) { return($title); }
