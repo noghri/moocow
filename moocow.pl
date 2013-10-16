@@ -83,60 +83,11 @@ my @cmd_regex_array = map { qr{$_} } ('!(flip)',
      my $nick = ( split /!/, $who )[0];
      my $channel = $where->[0];
 
-<<<<<<< HEAD
-
-
-
-     if ( my ($moo) = $what =~ /^${trigger}moo/ ) {
-         $irc->yield( privmsg => $channel => "$nick: mooooooo" );
-     }
-     elsif ( my ($entertain) = $what =~ /^${trigger}entertain/ ) {
-         $irc->yield( ctcp => $channel => "ACTION punches KtuLi in the throat." );
-     }
-     elsif ( my ($weather) = $what =~ /^${trigger}wz (.*)/ ) {
-        weather($weather,$channel);
-     }
-     elsif ( my ($coinflip) = $what =~ /^${trigger}flip/ ) {
-         $irc->yield( privmsg => $channel => coinflip());
-     }
-     elsif ( my ($youtube) = $what =~ /^(http:\/\/www.youtube.com\/.*)/ ) {
-         youtube($youtube,$channel);
-     }
-     elsif ( my ($gogl) = $what =~ /^(http:\/\/.*)/ ) {
-         $irc->yield( privmsg => $channel => gogl($gogl));
-         $irc->yield( privmsg => $channel => title($gogl));
-     }
-=======
      foreach my $re (@cmd_regex_array) {
          if (my ($arg)= $what =~ $re) {
               $cmd_actions->{$arg}->($2, $channel, $nick );
         }
-<<<<<<< HEAD
      }
-     #if ( my ($moo) = $what =~ /^!moo/ ) {
-     #    $irc->yield( privmsg => $channel => "$nick: mooooooo" );
-     #}
-     #elsif ( my ($entertain) = $what =~ /^!entertain/ ) {
-     #    $irc->yield( ctcp => $channel => "ACTION punches KtuLi in the throat." );
-#     }
-     #elsif ( my ($weather) = $what =~ /^\.wz (.*)/ ) {
-     #   weather($weather,$channel);
-     #}
-     #elsif ( my ($coinflip) = $what =~ /^!flip/ ) {
-     #    $irc->yield( privmsg => $channel => coinflip());
-     #}
-#     elsif ( my ($youtube) = $what =~ /^(http:\/\/www.youtube.com\/.*)/ ) {
-#         youtube($youtube);
-#     }
-#     elsif ( my ($gogl) = $what =~ /^(http:\/\/.*)/ ) {
-#         $irc->yield( privmsg => $channel => gogl($gogl));
-#         $irc->yield( privmsg => $channel => title($gogl));
-#     }
->>>>>>> dispatch table
-=======
-     }
-
->>>>>>> more better routes
      return;
  }
 
@@ -274,7 +225,7 @@ sub bot_reconnect {
 }
 
 sub gogl {
-
+    
     my @prams = @_;
     my $url = $prams[0];
     my $goglurl = "https://www.googleapis.com/urlshortener/v1/url";
@@ -301,7 +252,7 @@ sub title {
 
     my @prams = @_;
     my $url = $prams[0];
-
+    
     my $ua = LWP::UserAgent->new;
     $ua->timeout(10);
     my $req = HTTP::Request->new(GET => $url);
