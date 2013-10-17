@@ -35,6 +35,7 @@ $cmd_hash{"addquote"}  = sub { addquote(@_); };
 $cmd_hash{"moo"}       = sub { moo(@_); };
 $cmd_hash{"tu"}        = sub { gogl(@_); };
 $cmd_hash{"u2"}        = sub { youtube(@_); };
+$cmd_hash{"help"}      = sub { help(@_); };
 
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_ctcp_version)], ],
@@ -403,3 +404,18 @@ sub bot_rejoin {
 
 }
 
+sub help {
+
+    my @prams = @_;
+    my $chan = $prams[1];
+    my $nick = $prams[2];
+
+    $irc->yield( privmsg => $nick => "!tu <url>: Shorten a url" );
+    $irc->yield( privmsg => $nick => "!u2 <url>: youtube info" );
+    $irc->yield( privmsg => $nick => "!flip: coin flip" );
+    $irc->yield( privmsg => $nick => "!wz <zip>: Weather for zip" );
+    $irc->yield( privmsg => $nick => "!entertain: Massive entertainment." );
+    $irc->yield( privmsg => $nick => "!quote: Display random quote" );
+    $irc->yield( privmsg => $nick => "!addquote <quote>: add a new quote" );
+    $irc->yield( privmsg => $nick => "!moo: moo." );
+}
