@@ -34,6 +34,7 @@ $cmd_hash{"quote"}     = sub { quote(@_); };
 $cmd_hash{"addquote"}  = sub { addquote(@_); };
 $cmd_hash{"moo"}       = sub { moo(@_); };
 $cmd_hash{"tu"}        = sub { gogl(@_); };
+$cmd_hash{"u2"}        = sub { youtube(@_); };
 
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public)], ],
