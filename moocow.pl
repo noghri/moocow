@@ -2,18 +2,49 @@
 
 use strict;
 use warnings;
-use POE qw(Component::IRC);
+use POE qw(Component::IRC Component::IRC::State Component::IRC::Plugin::AutoJoin);
 use LWP::UserAgent;
+use Getopt::Std;
 use WebService::GData::YouTube;
 use DBI;
 use POSIX;
+use Config::Any;
+use Config::Any::INI;
+use Data::Dumper qw(Dumper);
+$Config::Any::INI::MAP_SECTION_SPACE_TO_NESTED_KEY = 0;
+
+my %opts;
+my $confpath = "moocow.config";
+
+
+getopts('h:f:', \%opts);
+
+if(exists($opts{f}))
+{
+  $confpath = $opts{f};
+}
+
+
+parseconfig($confpath);
+
 
 my $nickname = readconfig('nickname');
 my $ircname  = readconfig('ircname');
 my $server   = readconfig('server');
-my @channels = readconfig('channels');
+my $channels = readconfig('channels');
 my $trigger  = readconfig('trigger');
 my $dbpath   = readconfig('dbpath');
+
+my %chans;
+
+foreach my $c (split(',', $channels))
+{
+    my ($chan, $key) = split(/ /, $c);
+    $key = "" if(!defined($key));
+    $chans{$chan} = $key;
+}
+
+
 
 my $dbh = DBI->connect("dbi:SQLite:$dbpath")
   || die "Cannot connect: $DBI::errstr";
@@ -43,7 +74,6 @@ POE::Session->create(
         irc_disconnected => \&bot_reconnect,
         irc_error        => \&bot_reconnect,
         irc_socketerr    => \&bot_reconnect,
-        irc_kick         => \&bot_rejoin,
     },
     heap => { irc => $irc },
 );
@@ -55,7 +85,7 @@ sub _start {
 
     # retrieve our component's object from the heap where we stashed it
     my $irc = $heap->{irc};
-
+    $irc->plugin_add('AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans ));
     $irc->yield( register => 'all' );
     $irc->yield( connect  => {} );
     return;
@@ -71,8 +101,6 @@ sub irc_001 {
 
     print "Connected to ", $irc->server_name(), "\n";
 
-    # we join our channels
-    $irc->yield( join => $_ ) for @channels;
     return;
 }
 
@@ -334,22 +362,38 @@ sub moo {
     $irc->yield( privmsg => $channel => "$nick: mooooooo" );
 }
 
+
+# config file format
+
+#[bot]
+#nickname = nick
+#username = username
+#password = password
+#gecos = gecos
+
+
+
+
+my $ini;
+sub parseconfig {
+    my $path = $_[0];
+    $ini = Config::Any::INI->load($path) || die("Unable to parse config file $path: $!");
+#    my %ini = %{
+    print Dumper($ini); 
+#    exit;
+}
+
 sub readconfig {
 
     my @prams = @_;
     my $configitem;
 
     my $configtext = $prams[0];
-
-    open( FILE, "<", "moocow.config" )
-      or die "Cannot open config file: $!";
-
-    while (<FILE>) {
-
-        if ( $_ =~ /^$configtext = (.*)/ ) { close(FILE); return $1; }
-
+    if(!exists($ini->{$configtext}))
+    {
+      die("Config file entry: $configtext is missing!");
     }
-
+    return $ini->{$configtext};
 }
 
 sub bot_reconnect {
@@ -427,16 +471,6 @@ sub youtube {
 
 }
 
-sub bot_rejoin {
-    my $sender = $_[SENDER];
-
-    my $irc = $sender->get_heap();
-
-    # we join our channels
-    $irc->yield( join => $_ ) for @channels;
-    return;
-
-}
 
 sub help {
 
