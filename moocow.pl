@@ -243,14 +243,15 @@ sub weather {
         return;
     }
 #    print Dumper($wun->conditions);
-        
     my $city = $wun->conditions->observation_location->full;
     my $temp = $wun->conditions->temperature_string;
     my $humidity = $wun->conditions->relative_humidity;
     my $wind_speed = $wun->conditions->wind_string;
     my $weather = $wun->conditions->weather;
+    my $forecast = $wun->forecast->txt_forecast->forecastday->[0]{fcttext};
 
     $irc->yield( privmsg => $chan => "Weather for $city: Conditions $weather Temp: $temp Humidity: $humidity Wind: $wind_speed"); 
+    $irc->yield( privmsg => $chan => "$forecast");
 }
 
 
