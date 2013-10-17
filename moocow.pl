@@ -32,8 +32,18 @@ my $server   = readconfig('server');
 my $channels = readconfig('channels');
 my $trigger  = readconfig('trigger');
 my $dbpath   = readconfig('dbpath');
+my $autourl  = readconfig('autourl');
+
+
+if($autourl =~ /(true|1|yes)/) {
+    $autourl = 1;
+} else {
+  $autourl = 0;
+}
 
 my %chans;
+
+
 
 foreach my $c ( split( ',', $channels ) ) {
     my ( $chan, $key ) = split( / /, $c );
@@ -110,12 +120,15 @@ sub irc_public {
     my $nick = ( split /!/, $who )[0];
     my $channel = $where->[0];
 
-    if ( my ($youtube) = $what =~ /^(http:\/\/(www\.youtube\.com|youtube\.com|youtu\.be)\/.*)/ ) { 
-      youtube($youtube, $channel, $nick);
-    }
-    elsif ( my ($gogl) = $what =~ /^(http:\/\/.*)/ ) {
-        $irc->yield( privmsg => $channel => gogl( $gogl, $channel, $nick ) );
-        $irc->yield( privmsg => $channel => title( $gogl, $channel ) );
+
+    if($autourl)
+    {
+      if ( my ($youtube) = $what =~ /^(http:\/\/(www\.youtube\.com|youtube\.com|youtu\.be)\/.*)/ ) { 
+        youtube($youtube, $channel, $nick);
+      }
+      elsif ( my ($gogl) = $what =~ /^(http:\/\/.*)/ ) {
+        gogl( $gogl, $channel, $nick );
+      }
     }
 
     return if ( $what !~ /^$trigger(.*)/ );
@@ -383,6 +396,7 @@ sub gogl {
 
     my @prams   = @_;
     my $url     = $prams[0];
+    my $channel = $prams[1];
     my $goglurl = "https://www.googleapis.com/urlshortener/v1/url";
 
     my $ua = LWP::UserAgent->new;
@@ -397,9 +411,16 @@ sub gogl {
     foreach my $line (@data) {
 
         chomp($line);
-        if ( $line =~ /\"id\": \"(.*)\"/ ) { return $1; }
-
+        if ( $line =~ /\"id\": \"(.*)\"/ ) 
+        { 
+          $irc->yield(privmsg => $channel => "$1");
+          last;
+        }
     }
+    my $title = title($url);
+    
+    $irc->yield(privmsg => $channel => title($url)) if(defined($title));
+
 
 }
 
@@ -420,7 +441,7 @@ sub title {
         }
 
     }
-
+    return undef;
 }
 
 sub youtube {
