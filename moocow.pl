@@ -453,9 +453,9 @@ sub youtube {
     my $shorturl = gogl($u2link);
 
     if ($u2link =~ /youtube/i) {
-      $u2link =~ /http:\/\/www.youtube.com\/watch\?v=(.*)/;
+      $u2link =~ /http:\/\/www\.youtube\.com\/watch\?v=(.*)/;
     } elsif ($u2link =~ /youtu\.be/i) {
-      $u2link =~ /http:\/\/youtu.be\/(.*)/;
+      $u2link =~ /http:\/\/youtu\.be\/(.*)/;
     }
     my $u2 = $1;
 
@@ -467,7 +467,7 @@ sub youtube {
     my $duration = $video->duration();
     my $title    = $video->title();
 
-    $irc->yield( privmsg => $chan => "YouTube: $title Duration: $duration s Views: $count" );
+    $irc->yield( privmsg => $chan => "YouTube: $title Duration: $duration seconds Views: $count" );
 
 }
 
