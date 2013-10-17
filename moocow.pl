@@ -3,30 +3,28 @@
 use strict;
 use warnings;
 use POE qw(Component::IRC Component::IRC::State Component::IRC::Plugin::AutoJoin);
-use LWP::UserAgent;
 use Getopt::Std;
 use WebService::GData::YouTube;
 use DBI;
 use POSIX;
 use Config::Any;
 use Config::Any::INI;
-use Data::Dumper qw(Dumper);
+use Cache::FileCache;
+use WWW::Wunderground::API;
+use Data::Dumper;
+
 $Config::Any::INI::MAP_SECTION_SPACE_TO_NESTED_KEY = 0;
 
 my %opts;
 my $confpath = "moocow.config";
 
+getopts( 'h:f:', \%opts );
 
-getopts('h:f:', \%opts);
-
-if(exists($opts{f}))
-{
-  $confpath = $opts{f};
+if ( exists( $opts{f} ) ) {
+    $confpath = $opts{f};
 }
 
-
 parseconfig($confpath);
-
 
 my $nickname = readconfig('nickname');
 my $ircname  = readconfig('ircname');
@@ -37,14 +35,11 @@ my $dbpath   = readconfig('dbpath');
 
 my %chans;
 
-foreach my $c (split(',', $channels))
-{
-    my ($chan, $key) = split(/ /, $c);
-    $key = "" if(!defined($key));
+foreach my $c ( split( ',', $channels ) ) {
+    my ( $chan, $key ) = split( / /, $c );
+    $key = "" if ( !defined($key) );
     $chans{$chan} = $key;
 }
-
-
 
 my $dbh = DBI->connect("dbi:SQLite:$dbpath")
   || die "Cannot connect: $DBI::errstr";
@@ -84,7 +79,7 @@ sub _start {
 
     # retrieve our component's object from the heap where we stashed it
     my $irc = $heap->{irc};
-    $irc->plugin_add('AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans ));
+    $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans ) );
     $irc->yield( register => 'all' );
     $irc->yield( connect  => {} );
     return;
@@ -109,14 +104,13 @@ sub irc_public {
     my $nick = ( split /!/, $who )[0];
     my $channel = $where->[0];
 
-    if ( my ($youtube) = $what =~ /^(http:\/\/www.youtube.com\/.*)/ ) { 
-      youtube($youtube, $channel, $nick);
+    if ( my ($youtube) = $what =~ /^(http:\/\/www.youtube.com\/.*)/ ) {
+        youtube( $youtube, $channel, $nick );
     }
     elsif ( my ($gogl) = $what =~ /^http:\/\/(.*)/ ) {
-      $irc->yield( privmsg => $channel => gogl($gogl,$channel, $nick));
-      $irc->yield( privmsg => $channel => title($gogl,$channel));
+        $irc->yield( privmsg => $channel => gogl( $gogl, $channel, $nick ) );
+        $irc->yield( privmsg => $channel => title( $gogl, $channel ) );
     }
-                  
 
     return if ( $what !~ /^$trigger(.*)/ );
 
@@ -127,7 +121,6 @@ sub irc_public {
     if ( exists $cmd_hash{$cmd} ) {
         $cmd_hash{$cmd}->( $cmdargs, $channel, $nick );
     }
-    
 
     return;
 }
@@ -138,7 +131,6 @@ sub irc_ctcp_version {
     $irc->yield( ctcp => $who => "VERSION moocow 0.01 - its perl!" );
     return;
 }
-
 
 # We registered for all events, this will produce some debug info.
 sub _default {
@@ -161,11 +153,10 @@ sub quote {
     my @prams    = @_;
     my $quotecmd = $prams[0];
     my $channel  = $prams[1];
-    my $query =
-      q{SELECT quote, usermask, timestamp, quoteid FROM quotes WHERE channel = ?};
+    my $query    = q{SELECT quote, usermask, timestamp, quoteid FROM quotes WHERE channel = ?};
     my $sth;
 
-    if (defined($quotecmd) && $quotecmd ne '' ) {
+    if ( defined($quotecmd) && $quotecmd ne '' ) {
         $query = $query . q{ AND LOWER(quote) LIKE ? LIMIT 1; };
         $sth   = $dbh->prepare($query);
         $sth->bind_param( 1, $channel );
@@ -174,7 +165,7 @@ sub quote {
     }
     else {
         $query = $query . q{ ORDER BY RANDOM() LIMIT 1; };
-        $sth = $dbh->prepare($query);
+        $sth   = $dbh->prepare($query);
         $sth->bind_param( 1, $channel );
         warn if ($@);
     }
@@ -187,20 +178,20 @@ sub quote {
     }
 
     my $count = 0;
-    while(defined (my $res = $sth->fetchrow_hashref))
-    {
+    while ( defined( my $res = $sth->fetchrow_hashref ) ) {
 
         my $qt = $res->{'quote'};
         my $um = $res->{'usermask'};
         my $id = $res->{'quoteid'};
-        my $ts = strftime("%Y-%m-%d %H:%M:%S", localtime($res->{'timestamp'}));
+        my $ts = strftime( "%Y-%m-%d %H:%M:%S", localtime( $res->{'timestamp'} ) );
         $irc->yield( privmsg => $channel => "Quote[$id] $qt [$um] [$ts]" );
         ++$count;
+
         # only return one result for now...
         return;
     }
 
-    if($count == 0) {
+    if ( $count == 0 ) {
         $irc->yield( privmsg => $channel => "No matching quotes" );
     }
 }
@@ -212,7 +203,7 @@ sub addquote {
     my $who     = $prams[2];
 
     my $query =
-'INSERT INTO quotes(quote, usermask, channel, timestamp) VALUES (?, ?, LOWER(?), strftime(\'%s\',\'now\'))';
+      'INSERT INTO quotes(quote, usermask, channel, timestamp) VALUES (?, ?, LOWER(?), strftime(\'%s\',\'now\'))';
     my $sth = $dbh->prepare($query);
     if ($@) {
         $irc->yield( privmsg => $channel => "Error inserting quote: " . $@ );
@@ -224,8 +215,7 @@ sub addquote {
     DBI::dump_results($sth);
     $sth->execute();
     if ($@) {
-        $irc->yield(
-            privmsg => $channel => "Error inserting quote: " . $sth->err );
+        $irc->yield( privmsg => $channel => "Error inserting quote: " . $sth->err );
     }
     else {
         if ( $sth->rows > 0 ) {
@@ -240,73 +230,26 @@ sub weather {
     my $zip    = $prams[0];
     my $chan   = $prams[1];
     my $apikey = readconfig('apikey');
-    my $url = "http://api.wunderground.com/api/$apikey/conditions/q/$zip.json";
 
-    my $ua = LWP::UserAgent->new;
-    $ua->timeout(10);
-    my $req = HTTP::Request->new( GET => $url );
-    my $res = $ua->request($req);
-    if ( is_valid_zipcode($zip) == 1 ) {
-        $irc->yield( privmsg => $chan => "invalid zip $zip" );
-    }
-    else {
-
-        my $tmp = "";
-        my $conditions;
-        my $temp;
-        my $humidity;
-        my $wind_speed;
-        my $wind_dir;
-        my $full_city;
-        my $high;
-        my $low;
-
-        my @data = split /\n/, $res->content;
-
-        foreach my $line (@data) {
-
-            chomp($line);
-            if ( ($tmp) = $line =~ /weather\":\"(.*)\"/ ) {
-                $conditions = $tmp;
-            }
-            if ( ($tmp) = $line =~ /temperature_string\":\"(.*)\"/ ) {
-                $temp = $tmp;
-            }
-            if ( ($tmp) = $line =~ /relative_humidity\":\"(.*)\"/ ) {
-                $humidity = $tmp;
-            }
-            if ( ($tmp) = $line =~ /wind_string\":\"(.*)\"/ ) {
-                $wind_speed = $tmp;
-            }
-            if ( ($tmp) = $line =~ /wind_dir\":\"(.*)\"/ ) { $wind_dir = $tmp; }
-            if ( ($tmp) = $line =~ /full\":\"(.*)\"/ ) { $full_city = $tmp; }
-
-        }
-        $irc->yield( privmsg => $chan =>
-"Weather for $full_city: Conditions: $conditions Temp: $temp Humidity: $humidity Wind Speed: $wind_speed Wind Direction: $wind_dir"
-        );
-    }
-}
-
-sub is_valid_zipcode {
-
-    my @prams = @_;
-
-    my $zip = $prams[0];
-
-    if ( $zip =~ /^[0-9]{5}(?:-[0-9]{4})?$/ ) {
-        return 0;
-    }
-
-    elsif (
-        uc($zip) =~
-        /^[ABCEGHJKLMNPRSTVXY]{1}\d{1}[A-Z]{1} *\d{1}[A-Z]{1}\d{1}$/ )
+    my $wun = new WWW::Wunderground::API(location => $zip, api_key => $apikey, auto_api => 1,  cache=>Cache::FileCache->new({ namespace=>'moocow_wundercache', default_expires_in=>2400 }));
+    print $wun;
+    
+    if($wun->response->results)
     {
-        return 0;
+        $irc->yield(privmsg => $chan => "Too many results for location $zip");
+        return;
     }
+#    print Dumper($wun->conditions);
+        
+    my $city = $wun->conditions->observation_location->full;
+    my $temp = $wun->conditions->temperature_string;
+    my $humidity = $wun->conditions->relative_humidity;
+    my $wind_speed = $wun->conditions->wind_string;
+    my $weather = $wun->conditions->weather;
 
-    return 1;
+    $irc->yield( privmsg => $chan => "Weather for $city: Conditions $weather Temp: $temp Humidity: $humidity Wind: $wind_speed"); 
 }
+
 
 sub coinflip {
     my @prams   = @_;
@@ -337,25 +280,11 @@ sub moo {
     $irc->yield( privmsg => $channel => "$nick: mooooooo" );
 }
 
-
-# config file format
-
-#[bot]
-#nickname = nick
-#username = username
-#password = password
-#gecos = gecos
-
-
-
-
 my $ini;
+
 sub parseconfig {
     my $path = $_[0];
     $ini = Config::Any::INI->load($path) || die("Unable to parse config file $path: $!");
-#    my %ini = %{
-    print Dumper($ini); 
-#    exit;
 }
 
 sub readconfig {
@@ -364,9 +293,8 @@ sub readconfig {
     my $configitem;
 
     my $configtext = $prams[0];
-    if(!exists($ini->{$configtext}))
-    {
-      die("Config file entry: $configtext is missing!");
+    if ( !exists( $ini->{$configtext} ) ) {
+        die("Config file entry: $configtext is missing!");
     }
     return $ini->{$configtext};
 }
@@ -413,7 +341,6 @@ sub title {
 
     my @data = split /\n/, $res->content;
     foreach my $line (@data) {
-
         if ( my ($title) = $line =~ m/<title>([a-zA-Z\/][^>]+)<\/title>/si ) {
             return ($title);
         }
@@ -441,17 +368,15 @@ sub youtube {
     my $duration = $video->duration();
     my $title    = $video->title();
 
-    $irc->yield( privmsg => $chan =>
-          "YouTube: $title Duration: $duration s Views: $count" );
+    $irc->yield( privmsg => $chan => "YouTube: $title Duration: $duration s Views: $count" );
 
 }
-
 
 sub help {
 
     my @prams = @_;
-    my $chan = $prams[1];
-    my $nick = $prams[2];
+    my $chan  = $prams[1];
+    my $nick  = $prams[2];
 
     $irc->yield( privmsg => $nick => "!tu <url>: Shorten a url" );
     $irc->yield( privmsg => $nick => "!u2 <url>: youtube info" );
