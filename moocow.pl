@@ -35,6 +35,7 @@ $cmd_hash{"moo"}       = sub { moo(@_); };
 $cmd_hash{"tu"}        = sub { gogl(@_); };
 $cmd_hash{"u2"}        = sub { youtube(@_); };
 $cmd_hash{"help"}      = sub { help(@_); };
+$cmd_hash{"codeword"}  = sub { codeword(@_); };
 
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_ctcp_version)], ],
@@ -296,6 +297,30 @@ sub coinflip {
     $irc->yield( privmsg => $channel => "$result" );
 }
 
+sub codeword {
+    my @prams   = @_;
+    my $codeword = $prams[0];
+    my $channel = $prams[1];
+    my $kickee  = $prams[2];
+    my $kickres = "Don't try to make up codewords!";
+ 
+    if ($codeword =~ /pink-ribbons/i) {
+      $kickee = "jchawk";
+      $kickres = "PINK RIBBONS!";
+    } elsif ($codeword =~ /slacker/i) {
+      $kickee = "ktuli";
+      $kickres = "SLACKER!";
+    } elsif ($codeword =~ /dirtbag/i) {
+      $kickee = "noghri";
+      $kickres = "DIRTBAG!";
+    } elsif ($codeword =~ /wonderbread/i) {
+      $kickee = "tonyj";
+      $kickres = "WONDERBREAD!!!";
+    }
+
+    $irc->yield(kick => $channel => $kickee => $kickres);
+}
+
 sub entertain {
     my @prams   = @_;
     my $channel = $prams[1];
@@ -424,6 +449,7 @@ sub help {
     $irc->yield( privmsg => $nick => "!flip: coin flip" );
     $irc->yield( privmsg => $nick => "!wz <zip>: Weather for zip" );
     $irc->yield( privmsg => $nick => "!entertain: Massive entertainment." );
+    $irc->yield( privmsg => $nick => "!codeword <codeword>: Special codeword actions." );
     $irc->yield( privmsg => $nick => "!quote: Display random quote" );
     $irc->yield( privmsg => $nick => "!addquote <quote>: add a new quote" );
     $irc->yield( privmsg => $nick => "!moo: moo." );
