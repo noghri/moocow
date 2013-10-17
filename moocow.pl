@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use POE qw(Component::IRC Component::IRC::State Component::IRC::Plugin::AutoJoin Component::IRC::Plugin::Connector Component::IRC::Plugin::NickReclaim);
+use POE qw(Component::IRC Component::IRC::State Component::IRC::Plugin::AutoJoin Component::IRC::Plugin::Connector Component::IRC::Plugin::NickReclaim Component::IRC::Plugin::CTCP);
 use Getopt::Std;
 use WebService::GData::YouTube;
 use DBI;
@@ -81,6 +81,11 @@ sub _start {
     $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans ) );
     $irc->plugin_add( 'Connector', POE::Component::IRC::Plugin::Connector->new(delay => 60, reconnect => 5));
     $irc->plugin_add('NickReclaim', POE::Component::IRC::Plugin::NickReclaim->new( poll => 30));
+    $irc->plugin_add('CTCP', POE::Component::IRC::Plugin::CTCP->new(
+                      version => "moocow 0.01 - its perl!",
+                      userinfo => "I am a cow, not a user!",
+                      clientinfo => "moocow - its perl!",
+                      source => "grass"));
     $irc->yield( register => 'all' );
     $irc->yield( connect  => {} );
     return;
