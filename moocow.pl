@@ -237,7 +237,7 @@ sub weather {
 
     my $wun = new WWW::Wunderground::API(location => $zip, api_key => $apikey, auto_api => 1,  cache=>Cache::FileCache->new({ namespace=>'moocow_wundercache', default_expires_in=>2400 }));
 
-    if($wun->response->error)
+    if($wun->response->error->description)
     {
         $irc->yield(privmsg => $chan => "No results: " . $wun->response->error->description);
         return;
