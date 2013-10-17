@@ -111,7 +111,7 @@ sub irc_public {
     elsif ( my ($youtube) = $what =~ /^(http:\/\/www.youtube.com\/.*)/ ) { 
       youtube($youtube, $channel, $nick);
     }
-    elsif ( my ($gogl) = $what =~ /^http:\/\/(.*)/ ) {
+    elsif ( my ($gogl) = $what =~ /^(http:\/\/.*)/ ) {
         $irc->yield( privmsg => $channel => gogl( $gogl, $channel, $nick ) );
         $irc->yield( privmsg => $channel => title( $gogl, $channel ) );
     }
