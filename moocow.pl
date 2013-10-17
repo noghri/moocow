@@ -105,16 +105,11 @@ sub irc_public {
     my $nick = ( split /!/, $who )[0];
     my $channel = $where->[0];
 
-<<<<<<< HEAD
     if ( my ($youtube) = $what =~ /^(http:\/\/youtu.be\/.*)/ ) { 
       youtube($youtube, $channel, $nick);
     }
     elsif ( my ($youtube) = $what =~ /^(http:\/\/www.youtube.com\/.*)/ ) { 
       youtube($youtube, $channel, $nick);
-=======
-    if ( my ($youtube) = $what =~ /^(http:\/\/www.youtube.com\/.*)/ ) {
-        youtube( $youtube, $channel, $nick );
->>>>>>> e65bf8ef9ad1e6fbc447b3284c3de4304a9a2add
     }
     elsif ( my ($gogl) = $what =~ /^http:\/\/(.*)/ ) {
         $irc->yield( privmsg => $channel => gogl( $gogl, $channel, $nick ) );
