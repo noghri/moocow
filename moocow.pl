@@ -37,7 +37,7 @@ $cmd_hash{"tu"}        = sub { gogl(@_); };
 $cmd_hash{"u2"}        = sub { youtube(@_); };
 
 POE::Session->create(
-    package_states => [ main => [qw(_default _start irc_001 irc_public)], ],
+    package_states => [ main => [qw(_default _start irc_001 irc_public irc_ctcp_version)], ],
     inline_states  => {
         irc_disconnected => \&bot_reconnect,
         irc_error        => \&bot_reconnect,
@@ -93,6 +93,14 @@ sub irc_public {
 
     return;
 }
+
+sub irc_ctcp_version {
+    my ( $sender, $who, $where, $what ) = @_[ SENDER, ARG0 .. ARG2 ];
+    $who =~ s/^(.*)!.*$/$1/ or die "Weird who: $who";
+    $irc->yield( ctcp => $who => "VERSION moocow 0.01 - its perl!" );
+    return;
+}
+
 
 # We registered for all events, this will produce some debug info.
 sub _default {
