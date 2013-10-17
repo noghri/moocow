@@ -86,6 +86,7 @@ sub irc_public {
     }
     elsif ( my ($gogl) = $what =~ /^http:\/\/(.*)/ ) {
       $irc->yield( privmsg => $channel => gogl($gogl,$channel, $nick));
+      $irc->yield( privmsg => $channel => title($gogl,$channel));
     }
                   
 
