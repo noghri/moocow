@@ -24,7 +24,6 @@ my $irc = POE::Component::IRC->spawn(
     server  => $server,
 ) or die "Oh noooo! $!";
 
-# my $cmd_hash;
 my %cmd_hash;
 
 $cmd_hash{"flip"}      = sub { coinflip(@_); };
@@ -81,6 +80,14 @@ sub irc_public {
     my $nick = ( split /!/, $who )[0];
     my $channel = $where->[0];
 
+    if ( my ($youtube) = $what =~ /^(http:\/\/www.youtube.com\/.*)/ ) { 
+      youtube($youtube, $channel, $nick);
+    }
+    elsif ( my ($gogl) = $what =~ /^http:\/\/(.*)/ ) {
+      $irc->yield( privmsg => $channel => gogl($gogl,$channel, $nick));
+    }
+                  
+
     return if ( $what !~ /^$trigger(.*)/ );
 
     my @cmd = split / +/, $1;
@@ -90,6 +97,7 @@ sub irc_public {
     if ( exists $cmd_hash{$cmd} ) {
         $cmd_hash{$cmd}->( $cmdargs, $channel, $nick );
     }
+    
 
     return;
 }
