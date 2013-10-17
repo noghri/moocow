@@ -105,8 +105,11 @@ sub irc_public {
     my $nick = ( split /!/, $who )[0];
     my $channel = $where->[0];
 
-    if ( my ($youtube) = $what =~ /^(http:\/\/www.youtube.com\/.*)/ ) {
-        youtube( $youtube, $channel, $nick );
+    if ( my ($youtube) = $what =~ /^(http:\/\/youtu.be\/.*)/ ) { 
+      youtube($youtube, $channel, $nick);
+    }
+    elsif ( my ($youtube) = $what =~ /^(http:\/\/www.youtube.com\/.*)/ ) { 
+      youtube($youtube, $channel, $nick);
     }
     elsif ( my ($gogl) = $what =~ /^http:\/\/(.*)/ ) {
         $irc->yield( privmsg => $channel => gogl( $gogl, $channel, $nick ) );
@@ -387,7 +390,11 @@ sub youtube {
 
     my $shorturl = gogl($u2link);
 
-    $u2link =~ /http:\/\/www.youtube.com\/watch\?v=(.*)/;
+    if ($u2link =~ /youtube/i) {
+      $u2link =~ /http:\/\/www.youtube.com\/watch\?v=(.*)/;
+    } elsif ($u2link =~ /youtu\.be/i) {
+      $u2link =~ /http:\/\/youtu.be\/(.*)/;
+    }
     my $u2 = $1;
 
     my $yt = new WebService::GData::YouTube();
