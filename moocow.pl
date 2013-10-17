@@ -242,15 +242,16 @@ sub weather {
     my $chan   = $prams[1];
     my $apikey = readconfig('apikey');
     my $url = "http://api.wunderground.com/api/$apikey/conditions/q/$zip.json";
-
-    my $ua = LWP::UserAgent->new;
-    $ua->timeout(10);
-    my $req = HTTP::Request->new( GET => $url );
-    my $res = $ua->request($req);
     if ( is_valid_zipcode($zip) == 1 ) {
         $irc->yield( privmsg => $chan => "invalid zip $zip" );
-    }
+        }
+
     else {
+        my $ua = LWP::UserAgent->new;
+        $ua->timeout(10);
+        my $req = HTTP::Request->new( GET => $url );
+        my $res = $ua->request($req);
+
 
         my $tmp = "";
         my $conditions;
