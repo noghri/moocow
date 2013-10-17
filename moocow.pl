@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use POE qw(Component::IRC Component::IRC::State Component::IRC::Plugin::AutoJoin);
+use POE qw(Component::IRC Component::IRC::State Component::IRC::Plugin::AutoJoin Component::IRC::Plugin::Connector Component::IRC::Plugin::NickReclaim);
 use Getopt::Std;
 use WebService::GData::YouTube;
 use DBI;
@@ -48,6 +48,8 @@ my $irc = POE::Component::IRC->spawn(
     nick    => $nickname,
     ircname => $ircname,
     server  => $server,
+    Debug   => 1,
+    Flood   => 1,
 ) or die "Oh noooo! $!";
 
 my %cmd_hash;
@@ -62,14 +64,10 @@ $cmd_hash{"tu"}        = sub { gogl(@_); };
 $cmd_hash{"u2"}        = sub { youtube(@_); };
 $cmd_hash{"help"}      = sub { help(@_); };
 $cmd_hash{"codeword"}  = sub { codeword(@_); };
-
+$cmd_hash{"wze"}       = sub { weather_extended(@_); };
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_ctcp_version)], ],
-    inline_states  => {
-        irc_disconnected => \&bot_reconnect,
-        irc_error        => \&bot_reconnect,
-        irc_socketerr    => \&bot_reconnect,
-    },
+    inline_states  => { },
     heap => { irc => $irc },
 );
 
@@ -81,6 +79,8 @@ sub _start {
     # retrieve our component's object from the heap where we stashed it
     my $irc = $heap->{irc};
     $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans ) );
+    $irc->plugin_add( 'Connector', POE::Component::IRC::Plugin::Connector->new(delay => 60, reconnect => 5));
+    $irc->plugin_add('NickReclaim', POE::Component::IRC::Plugin::NickReclaim->new( poll => 30));
     $irc->yield( register => 'all' );
     $irc->yield( connect  => {} );
     return;
@@ -105,10 +105,7 @@ sub irc_public {
     my $nick = ( split /!/, $who )[0];
     my $channel = $where->[0];
 
-    if ( my ($youtube) = $what =~ /^(http:\/\/youtu.be\/.*)/ ) { 
-      youtube($youtube, $channel, $nick);
-    }
-    elsif ( my ($youtube) = $what =~ /^(http:\/\/www.youtube.com\/.*)/ ) { 
+    if ( my ($youtube) = $what =~ /^(http:\/\/(www\.youtube\.com|youtube\.com|youtu\.be)\/.*)/ ) { 
       youtube($youtube, $channel, $nick);
     }
     elsif ( my ($gogl) = $what =~ /^http:\/\/(.*)/ ) {
@@ -138,6 +135,7 @@ sub irc_ctcp_version {
 
 # We registered for all events, this will produce some debug info.
 sub _default {
+    return;
     my ( $event, $args ) = @_[ ARG0 .. $#_ ];
     my @output = ("$event: ");
 
@@ -226,6 +224,49 @@ sub addquote {
             $irc->yield( privmsg => $channel => "Quote has been added, fool!" );
         }
     }
+}
+
+sub weather_extended {
+    my @prams  = @_;
+    my $zip    = $prams[0];
+    my $chan   = $prams[1];
+    my $apikey = readconfig('apikey');
+
+    my $wun = new WWW::Wunderground::API(location => $zip, api_key => $apikey, auto_api => 1,  cache=>Cache::FileCache->new({ namespace=>'moocow_wundercache', default_expires_in=>2400 }));
+
+    if($wun->response->error->description)
+    {
+        $irc->yield(privmsg => $chan => "No results: " . $wun->response->error->description);
+        return;
+    }
+    
+    if($wun->response->results)
+    {
+        $irc->yield(privmsg => $chan => "Too many results for location $zip");
+        return;
+    }
+
+    my $cond = $wun->conditions;
+    my $updated = $cond->observation_time;
+    $updated =~ s/Last Updated on //;
+    my $location = $cond->display_location->city;
+    my $weather = $cond->weather;
+    my $temp = $cond->temperature_string;
+    my $feels = $cond->feelslike_string;
+    my $uv = $cond->UV;
+    my $humid = $cond->relative_humidity;
+    my $pressin = $cond->pressure_in;
+    my $pressmb = $cond->pressure_mb;
+    my $wind = $cond->wind_string;
+    $wind =~ s/From the //;
+    my $dew = $cond->dewpoint_string;
+    my $precip = $cond->precip_today_string;
+    #Harpers Ferry, WV; Updated: 3:00 PM EDT on October 17, 2013; Conditions: Overcast; Temperature: 71.2°F (21.8°C); UV: 1/16 Humidity: 75%; Pressure: 29.79 in/2054 hPa (Falling); Wind: SSE at 5.0 MPH (8 KPH)
+    $irc->yield(privmsg => $chan => "WX $location Updated: $updated Conditions: $weather: Temp: $temp Feels like: $feels Dewpoint: $dew UV: $uv Humidity: $humid: Pressure: ${pressin}/in/${pressmb} MB Wind: $wind Precip: $precip");
+#    my $resp = $wun->r->full_location . "Updated: $obs"
+    return;
+
+
 }
 
 sub weather {
@@ -331,12 +372,6 @@ sub readconfig {
         die("Config file entry: $configtext is missing!");
     }
     return $ini->{$configtext};
-}
-
-sub bot_reconnect {
-    my $kernel = $_[KERNEL];
-    $kernel->delay( autoping => undef );
-    $kernel->delay( _start   => 10 );
 }
 
 sub gogl {
