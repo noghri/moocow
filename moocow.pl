@@ -449,15 +449,18 @@ sub youtube {
     my @prams  = @_;
     my $u2link = $prams[0];
     my $chan   = $prams[1];
+    my $u2;
 
     my $shorturl = gogl($u2link);
 
     if ($u2link =~ /youtube/i) {
       $u2link =~ /http:\/\/www\.youtube\.com\/watch\?v=(.*)/;
+      $u2 = $1;
     } elsif ($u2link =~ /youtu\.be/i) {
-      $u2link =~ /http:\/\/youtu\.be\/(.*)/;
+      $u2link =~ /http:\/\/youtu.be\/(.*)/;
+      $u2 = $1;
     }
-    my $u2 = $1;
+
 
     my $yt = new WebService::GData::YouTube();
 
@@ -467,7 +470,7 @@ sub youtube {
     my $duration = $video->duration();
     my $title    = $video->title();
 
-    $irc->yield( privmsg => $chan => "YouTube: $title Duration: $duration seconds Views: $count" );
+    $irc->yield( privmsg => $chan => "YouTube: \x02$title\x02 Duration: \x02$duration\x02 seconds Views: \x02$count\x02" );
 
 }
 
