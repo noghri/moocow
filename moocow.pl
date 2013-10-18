@@ -42,9 +42,9 @@ my %wordppl; # everyone who tries for score keeping
 my $word_s = "";
 
 # sub-routines
-sub say($);
+sub say($$);
 sub word(@);
-sub hack();
+sub hack(@);
 
 if($autourl =~ /(true|1|yes)/) {
     $autourl = 1;
@@ -88,7 +88,7 @@ $cmd_hash{"codeword"}  = sub { codeword(@_); };
 $cmd_hash{"wze"}       = sub { weather_extended(@_); };
 $cmd_hash{"nhl"}       = sub { nhl_standings(@_); };
 $cmd_hash{"word"}       = sub { word(@_); };
-$cmd_hash{"hack"}       = sub { hack(); };
+$cmd_hash{"hack"}       = sub { hack(@_); };
 
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_ctcp_version)], ],
@@ -472,19 +472,19 @@ sub title {
 sub youtube{
         my $u2 = $3 if($_[0] =~ m/^.*youtu(\.)?be(\.com\/watch\?v=|\/)(.*)/i);
         my $yt = new WebService::GData::YouTube();
-        say("YouTube: \x02".$yt->get_video_by_id($u2)->title()."\x02 Duration: \x02".$yt->get_video_by_id($u2)->duration."\x02 seconds Views: \x02".$yt->get_video_by_id($u2)->view_count."\x02");
-        say(gogl($_[0]));
+        say($_[1],"YouTube: \x02".$yt->get_video_by_id($u2)->title()."\x02 Duration: \x02".$yt->get_video_by_id($u2)->duration."\x02 seconds Views: \x02".$yt->get_video_by_id($u2)->view_count."\x02");
+        gogl(@_);
 }
 
-sub say($){ # just to minimize typing
-        $irc->yield(privmsg => "#threerivers" => $_[0]); # needs to be changed to $channel
+sub say($$){ # just to minimize typing
+        $irc->yield(privmsg => $_[0] => $_[1]); # needs to be changed to $channel
         return;
 }
 
 sub word(@){ # !word game
         $wordppl{$_[2]} = 0 if(!exists($wordppl{$_[2]}));
         if($_[0] eq "reset"){ # because there is no timer function
-                say("the word has been reset by ".$_[2]." answer was: " .$word_ans);
+                say($_[1],"the word has been reset by ".$_[2]." answer was: " .$word_ans);
                 $word_on = 0;
                 $word_ans = "";
                 return;
@@ -494,10 +494,10 @@ sub word(@){ # !word game
                         $scores .= $k.": ".$v.", ";
                 }
                 $scores =~ s/, $//;
-                say($scores);
+                say($_[1],$scores);
                 return;
         }elsif($word_on){ # boolean
-                say("the game is already running with word: (" . $word_s . "), try \"!word reset\" to start over");
+                say($_[1],"the game is already running with word: (" . $word_s . "), try \"!word reset\" to start over");
                 return;
         }else{
                 my $no = int(rand(`wc -l /home/trevelyn/words.txt | awk '{print \$1}'`));
@@ -511,14 +511,14 @@ sub word(@){ # !word game
                         splice(@word,$rn,1);
                 }
                 $word_s = $sw;
-                say($sw);
+                say($_[1],$sw);
                 $word_on = 1;
         }
         return;
 }
 
-sub hack(){
-    say("hack the planet!");
+sub hack(@){
+    say($_[1],"hack the planet!");
 }
 
 sub help {
