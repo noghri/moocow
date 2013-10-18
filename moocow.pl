@@ -2,8 +2,7 @@
 
 use strict;
 use warnings;
-use POE
-  qw(Component::IRC Component::IRC::State Component::IRC::Plugin::AutoJoin Component::IRC::Plugin::Connector Component::IRC::Plugin::NickReclaim Component::IRC::Plugin::CTCP);
+use POE qw(Component::IRC Component::IRC::State Component::IRC::Plugin::AutoJoin Component::IRC::Plugin::Connector Component::IRC::Plugin::NickReclaim Component::IRC::Plugin::CTCP);
 use Getopt::Std;
 use WebService::GData::YouTube;
 use DBI;
@@ -36,9 +35,9 @@ my $dbpath   = readconfig('dbpath');
 my $autourl  = readconfig('autourl');
 
 # for WORD game
-my $word_on  = 0;     # !word game
-my $word_ans = "";    # the actual answer
-my %wordppl;          # everyone who tries for score keeping
+my $word_on = 0;   # !word game
+my $word_ans = ""; # the actual answer
+my %wordppl; # everyone who tries for score keeping
 my $word_s = "";
 
 # sub-routines
@@ -46,14 +45,15 @@ sub say($);
 sub word(@);
 sub hack();
 
-if ( $autourl =~ /(true|1|yes)/ ) {
+if($autourl =~ /(true|1|yes)/) {
     $autourl = 1;
-}
-else {
-    $autourl = 0;
+} else {
+  $autourl = 0;
 }
 
 my %chans;
+
+
 
 foreach my $c ( split( ',', $channels ) ) {
     my ( $chan, $key ) = split( / /, $c );
@@ -86,13 +86,13 @@ $cmd_hash{"help"}      = sub { help(@_); };
 $cmd_hash{"codeword"}  = sub { codeword(@_); };
 $cmd_hash{"wze"}       = sub { weather_extended(@_); };
 $cmd_hash{"nhl"}       = sub { nhl_standings(@_); };
-$cmd_hash{"word"}      = sub { word(@_); };
-$cmd_hash{"hack"}      = sub { hack(); };
+$cmd_hash{"word"}       = sub { word(@_); };
+$cmd_hash{"hack"}       = sub { hack(); };
 
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_ctcp_version)], ],
-    inline_states  => {},
-    heap           => { irc  => $irc },
+    inline_states  => { },
+    heap => { irc => $irc },
 );
 
 $poe_kernel->run();
@@ -103,23 +103,13 @@ sub _start {
     # retrieve our component's object from the heap where we stashed it
     my $irc = $heap->{irc};
     $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans ) );
-    $irc->plugin_add(
-        'Connector',
-        POE::Component::IRC::Plugin::Connector->new(
-            delay     => 60,
-            reconnect => 5
-        )
-    );
-    $irc->plugin_add( 'NickReclaim', POE::Component::IRC::Plugin::NickReclaim->new( poll => 30 ) );
-    $irc->plugin_add(
-        'CTCP',
-        POE::Component::IRC::Plugin::CTCP->new(
-            version    => "moocow 0.01 - its perl!",
-            userinfo   => "I am a cow, not a user!",
-            clientinfo => "moocow - its perl!",
-            source     => "grass"
-        )
-    );
+    $irc->plugin_add( 'Connector', POE::Component::IRC::Plugin::Connector->new(delay => 60, reconnect => 5));
+    $irc->plugin_add('NickReclaim', POE::Component::IRC::Plugin::NickReclaim->new( poll => 30));
+    $irc->plugin_add('CTCP', POE::Component::IRC::Plugin::CTCP->new(
+                      version => "moocow 0.01 - its perl!",
+                      userinfo => "I am a cow, not a user!",
+                      clientinfo => "moocow - its perl!",
+                      source => "grass"));
     $irc->yield( register => 'all' );
     $irc->yield( connect  => {} );
     return;
@@ -142,27 +132,27 @@ sub irc_public {
     my ( $sender, $who, $where, $what ) = @_[ SENDER, ARG0 .. ARG2 ];
     my $nick = ( split /!/, $who )[0];
     my $channel = $where->[0];
-
     # for the !word game
-    if ( $word_on && $what eq $word_ans ) {    # !word game
-        $irc->yield( privmsg => $where->[0] => "That's right! :D" );
-        my $whop = $who;
-        $whop =~ s/!.*//;
-        $wordppl{$whop} = ( $wordppl{$whop} + 1 );
-        $word_ans       = "";
-        $word_s         = "";
-        $word_on        = 0;
+    if($word_on && $what eq $word_ans){ # !word game
+            $irc->yield( privmsg => $where->[0] => "That's right! :D");
+            my $whop = $who;
+            $whop =~ s/!.*//;
+            $wordppl{$whop} = ($wordppl{$whop} + 1);
+            $word_ans = "";
+            $word_s = "";
+            $word_on = 0;
     }
-    if ( $what =~ m/^hack/i ) {
+    if($what =~ m/^hack/i){
         hack();
     }
-    if ($autourl) {
-        if ( my ($youtube) = $what =~ /^(http:\/\/(www\.youtube\.com|youtube\.com|youtu\.be)\/.*)/ ) {
-            youtube( $youtube, $channel, $nick );
-        }
-        elsif ( my ($gogl) = $what =~ /^(http:\/\/.*)/ ) {
-            gogl( $gogl, $channel, $nick );
-        }
+    if($autourl)
+    {
+      if ( my ($youtube) = $what =~ /^(http:\/\/(www\.youtube\.com|youtube\.com|youtu\.be)\/.*)/ ) { 
+        youtube($youtube, $channel, $nick);
+      }
+      elsif ( my ($gogl) = $what =~ /^(http:\/\/.*)/ ) {
+        gogl( $gogl, $channel, $nick );
+      }
     }
 
     return if ( $what !~ /^$trigger(.*)/ );
@@ -256,8 +246,9 @@ sub addquote {
     my $channel = $prams[1];
     my $who     = $prams[2];
 
-    my $query = 'INSERT INTO quotes(quote, usermask, channel, timestamp) VALUES (?, ?, LOWER(?), strftime(\'%s\',\'now\'))';
-    my $sth   = $dbh->prepare($query);
+    my $query =
+      'INSERT INTO quotes(quote, usermask, channel, timestamp) VALUES (?, ?, LOWER(?), strftime(\'%s\',\'now\'))';
+    my $sth = $dbh->prepare($query);
     if ($@) {
         $irc->yield( privmsg => $channel => "Error inserting quote: " . $@ );
         return;
@@ -283,46 +274,40 @@ sub weather_extended {
     my $chan   = $prams[1];
     my $apikey = readconfig('apikey');
 
-    my $wun = new WWW::Wunderground::API(
-        location => $zip,
-        api_key  => $apikey,
-        auto_api => 1,
-        cache    => Cache::FileCache->new( { namespace => 'moocow_wundercache', default_expires_in => 2400 } )
-    );
+    my $wun = new WWW::Wunderground::API(location => $zip, api_key => $apikey, auto_api => 1,  cache=>Cache::FileCache->new({ namespace=>'moocow_wundercache', default_expires_in=>2400 }));
 
-    if ( $wun->response->error->description ) {
-        $irc->yield( privmsg => $chan => "No results: " . $wun->response->error->description );
+    if($wun->response->error->description)
+    {
+        $irc->yield(privmsg => $chan => "No results: " . $wun->response->error->description);
+        return;
+    }
+    
+    if($wun->response->results)
+    {
+        $irc->yield(privmsg => $chan => "Too many results for location $zip");
         return;
     }
 
-    if ( $wun->response->results ) {
-        $irc->yield( privmsg => $chan => "Too many results for location $zip" );
-        return;
-    }
-
-    my $cond    = $wun->conditions;
+    my $cond = $wun->conditions;
     my $updated = $cond->observation_time;
     $updated =~ s/Last Updated on //;
     my $location = $cond->display_location->city;
-    my $weather  = $cond->weather;
-    my $temp     = $cond->temperature_string;
-    my $feels    = $cond->feelslike_string;
-    my $uv       = $cond->UV;
-    my $humid    = $cond->relative_humidity;
-    my $pressin  = $cond->pressure_in;
-    my $pressmb  = $cond->pressure_mb;
-    my $wind     = $cond->wind_string;
+    my $weather = $cond->weather;
+    my $temp = $cond->temperature_string;
+    my $feels = $cond->feelslike_string;
+    my $uv = $cond->UV;
+    my $humid = $cond->relative_humidity;
+    my $pressin = $cond->pressure_in;
+    my $pressmb = $cond->pressure_mb;
+    my $wind = $cond->wind_string;
     $wind =~ s/From the //;
-    my $dew    = $cond->dewpoint_string;
+    my $dew = $cond->dewpoint_string;
     my $precip = $cond->precip_today_string;
-
-#Harpers Ferry, WV; Updated: 3:00 PM EDT on October 17, 2013; Conditions: Overcast; Temperature: 71.2°F (21.8°C); UV: 1/16 Humidity: 75%; Pressure: 29.79 in/2054 hPa (Falling); Wind: SSE at 5.0 MPH (8 KPH)
-    $irc->yield( privmsg => $chan =>
-"WX $location Updated: $updated Conditions: $weather: Temp: $temp Feels like: $feels Dewpoint: $dew UV: $uv Humidity: $humid: Pressure: ${pressin}/in/${pressmb} MB Wind: $wind Precip: $precip"
-    );
-
-    #    my $resp = $wun->r->full_location . "Updated: $obs"
+    #Harpers Ferry, WV; Updated: 3:00 PM EDT on October 17, 2013; Conditions: Overcast; Temperature: 71.2°F (21.8°C); UV: 1/16 Humidity: 75%; Pressure: 29.79 in/2054 hPa (Falling); Wind: SSE at 5.0 MPH (8 KPH)
+    $irc->yield(privmsg => $chan => "WX $location Updated: $updated Conditions: $weather: Temp: $temp Feels like: $feels Dewpoint: $dew UV: $uv Humidity: $humid: Pressure: ${pressin}/in/${pressmb} MB Wind: $wind Precip: $precip");
+#    my $resp = $wun->r->full_location . "Updated: $obs"
     return;
+
 
 }
 
@@ -333,34 +318,31 @@ sub weather {
     my $chan   = $prams[1];
     my $apikey = readconfig('apikey');
 
-    my $wun = new WWW::Wunderground::API(
-        location => $zip,
-        api_key  => $apikey,
-        auto_api => 1,
-        cache    => Cache::FileCache->new( { namespace => 'moocow_wundercache', default_expires_in => 2400 } )
-    );
+    my $wun = new WWW::Wunderground::API(location => $zip, api_key => $apikey, auto_api => 1,  cache=>Cache::FileCache->new({ namespace=>'moocow_wundercache', default_expires_in=>2400 }));
 
-    if ( $wun->response->error->description ) {
-        $irc->yield( privmsg => $chan => "No results: " . $wun->response->error->description );
+    if($wun->response->error->description)
+    {
+        $irc->yield(privmsg => $chan => "No results: " . $wun->response->error->description);
         return;
     }
-
-    if ( $wun->response->results ) {
-        $irc->yield( privmsg => $chan => "Too many results for location $zip" );
+    
+    if($wun->response->results)
+    {
+        $irc->yield(privmsg => $chan => "Too many results for location $zip");
         return;
     }
-
-    #    print Dumper($wun->conditions);
-    my $city       = $wun->conditions->observation_location->full;
-    my $temp       = $wun->conditions->temperature_string;
-    my $humidity   = $wun->conditions->relative_humidity;
+#    print Dumper($wun->conditions);
+    my $city = $wun->conditions->observation_location->full;
+    my $temp = $wun->conditions->temperature_string;
+    my $humidity = $wun->conditions->relative_humidity;
     my $wind_speed = $wun->conditions->wind_string;
-    my $weather    = $wun->conditions->weather;
-    my $forecast   = $wun->forecast->txt_forecast->forecastday->[0]{fcttext};
+    my $weather = $wun->conditions->weather;
+    my $forecast = $wun->forecast->txt_forecast->forecastday->[0]{fcttext};
 
-    $irc->yield( privmsg => $chan => "Weather for $city: Conditions $weather Temp: $temp Humidity: $humidity Wind: $wind_speed" );
-    $irc->yield( privmsg => $chan => "$forecast" );
+    $irc->yield( privmsg => $chan => "Weather for $city: Conditions $weather Temp: $temp Humidity: $humidity Wind: $wind_speed"); 
+    $irc->yield( privmsg => $chan => "$forecast");
 }
+
 
 sub coinflip {
     my @prams   = @_;
@@ -379,30 +361,27 @@ sub coinflip {
 }
 
 sub codeword {
-    my @prams    = @_;
+    my @prams   = @_;
     my $codeword = $prams[0];
-    my $channel  = $prams[1];
-    my $kickee   = $prams[2];
-    my $kickres  = "Don't try to make up codewords!";
-
-    if ( $codeword =~ /pink-ribbons/i ) {
-        $kickee  = "jchawk";
-        $kickres = "PINK RIBBONS!";
-    }
-    elsif ( $codeword =~ /slacker/i ) {
-        $kickee  = "ktuli";
-        $kickres = "SLACKER!";
-    }
-    elsif ( $codeword =~ /dirtbag/i ) {
-        $kickee  = "noghri";
-        $kickres = "DIRTBAG!";
-    }
-    elsif ( $codeword =~ /wonderbread/i ) {
-        $kickee  = "tonyj";
-        $kickres = "WONDERBREAD!!!";
+    my $channel = $prams[1];
+    my $kickee  = $prams[2];
+    my $kickres = "Don't try to make up codewords!";
+ 
+    if ($codeword =~ /pink-ribbons/i) {
+      $kickee = "jchawk";
+      $kickres = "PINK RIBBONS!";
+    } elsif ($codeword =~ /slacker/i) {
+      $kickee = "ktuli";
+      $kickres = "SLACKER!";
+    } elsif ($codeword =~ /dirtbag/i) {
+      $kickee = "noghri";
+      $kickres = "DIRTBAG!";
+    } elsif ($codeword =~ /wonderbread/i) {
+      $kickee = "tonyj";
+      $kickres = "WONDERBREAD!!!";
     }
 
-    $irc->yield( kick => $channel => $kickee => $kickres );
+    $irc->yield(kick => $channel => $kickee => $kickres);
 }
 
 sub entertain {
@@ -422,8 +401,7 @@ my $ini;
 
 sub parseconfig {
     my $path = $_[0];
-    $ini = Config::Any::INI->load($path)
-      || die("Unable to parse config file $path: $!");
+    $ini = Config::Any::INI->load($path) || die("Unable to parse config file $path: $!");
 }
 
 sub readconfig {
@@ -457,14 +435,16 @@ sub gogl {
     foreach my $line (@data) {
 
         chomp($line);
-        if ( $line =~ /\"id\": \"(.*)\"/ ) {
-            $irc->yield( privmsg => $channel => "$1" );
-            last;
+        if ( $line =~ /\"id\": \"(.*)\"/ ) 
+        { 
+          $irc->yield(privmsg => $channel => "$1");
+          last;
         }
     }
     my $title = title($url);
+    
+    $irc->yield(privmsg => $channel => title($url)) if(defined($title));
 
-    $irc->yield( privmsg => $channel => title($url) ) if ( defined($title) );
 
 }
 
@@ -488,64 +468,55 @@ sub title {
     return undef;
 }
 
-sub youtube {
-    my $u2 = $3 if ( $_[0] =~ m/^.*youtu(\.)?be(\.com\/watch\?v=|\/)(.*)/i );
-    my $yt = new WebService::GData::YouTube();
-    say(    "YouTube: \x02"
-          . $yt->get_video_by_id($u2)->title()
-          . "\x02 Duration: \x02"
-          . $yt->get_video_by_id($u2)->duration
-          . "\x02 seconds Views: \x02"
-          . $yt->get_video_by_id($u2)->view_count
-          . "\x02" );
-    say( gogl( $_[0] ) );
+sub youtube{
+        my $u2 = $3 if($_[0] =~ m/^.*youtu(\.)?be(\.com\/watch\?v=|\/)(.*)/i);
+        my $yt = new WebService::GData::YouTube();
+        say("YouTube: \x02".$yt->get_video_by_id($u2)->title()."\x02 Duration: \x02".$yt->get_video_by_id($u2)->duration."\x02 seconds Views: \x02".$yt->get_video_by_id($u2)->view_count."\x02");
+        say(gogl($_[0]));
 }
 
-sub say($) {    # just to minimize typing
-    $irc->yield( privmsg => "#threerivers" => $_[0] );    # needs to be changed to $channel
-    return;
-}
-
-sub word(@) {                                             # !word game
-    $wordppl{ $_[2] } = 0 if ( !exists( $wordppl{ $_[2] } ) );
-    if ( $_[0] eq "reset" ) {                             # because there is no timer function
-        say( "the word has been reset by " . $_[2] . " answer was: " . $word_ans );
-        $word_on  = 0;
-        $word_ans = "";
+sub say($){ # just to minimize typing
+        $irc->yield(privmsg => "#threerivers" => $_[0]); # needs to be changed to $channel
         return;
-    }
-    elsif ( $_[0] =~ m/^score(s)?/ ) {                    # show your score
-        my $scores = "";
-        while ( my ( $k, $v ) = each(%wordppl) ) {
-            $scores .= $k . ": " . $v . ", ";
+}
+
+sub word(@){ # !word game
+        $wordppl{$_[2]} = 0 if(!exists($wordppl{$_[2]}));
+        if($_[0] eq "reset"){ # because there is no timer function
+                say("the word has been reset by ".$_[2]." answer was: " .$word_ans);
+                $word_on = 0;
+                $word_ans = "";
+                return;
+        }elsif($_[0] =~ m/^score(s)?/){ # show your score
+                my $scores = "";
+                while(my($k,$v) = each(%wordppl)){
+                        $scores .= $k.": ".$v.", ";
+                }
+                $scores =~ s/, $//;
+                say($scores);
+                return;
+        }elsif($word_on){ # boolean
+                say("the game is already running with word: (" . $word_s . "), try \"!word reset\" to start over");
+                return;
+        }else{
+                my $no = int(rand(`wc -l /home/trevelyn/words.txt | awk '{print \$1}'`));
+                $word_ans = `sed '$no q;d' /home/trevelyn/words.txt`;
+                chomp $word_ans; # answer
+                my @word = split(//,$word_ans);
+                my $sw = ""; # scrambled word
+                until($#word == -1){
+                        my $rn = int(rand($#word));
+                        $sw .= $word[$rn];
+                        splice(@word,$rn,1);
+                }
+                $word_s = $sw;
+                say($sw);
+                $word_on = 1;
         }
-        $scores =~ s/, $//;
-        say($scores);
         return;
-    }
-    elsif ($word_on) {                                    # boolean
-        say( "the game is already running with word: (" . $word_s . "), try \"!word reset\" to start over" );
-        return;
-    }
-    else {
-        my $no = int( rand(`wc -l words.txt | awk '{print \$1}'`) );
-        $word_ans = `sed '$no q;d' words.txt`;
-        chomp $word_ans;                                  # answer
-        my @word = split( //, $word_ans );
-        my $sw   = "";                                    # scrambled word
-        until ( $#word == -1 ) {
-            my $rn = int( rand($#word) );
-            $sw .= $word[$rn];
-            splice( @word, $rn, 1 );
-        }
-        $word_s = $sw;
-        say($sw);
-        $word_on = 1;
-    }
-    return;
 }
 
-sub hack() {
+sub hack(){
     say("hack the planet!");
 }
 
