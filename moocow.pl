@@ -535,6 +535,8 @@ sub help {
     $irc->yield( privmsg => $nick => "!codeword <codeword>: Special codeword actions." );
     $irc->yield( privmsg => $nick => "!quote: Display random quote" );
     $irc->yield( privmsg => $nick => "!addquote <quote>: add a new quote" );
+    $irc->yield( privmsg => $nick => "!nhl: nhl standings" );
+    $irc->yield( privmsg => $nick => "!word: word scramble game" );
     $irc->yield( privmsg => $nick => "!moo: moo." );
 }
 
@@ -544,12 +546,24 @@ sub nhl_standings {
     my $chan  = $prams[1];
     my $nick  = $prams[2];
 
-    my $url = "http://www.nhl.com/ice/m_standings.htm";
+    my $url = "http://www.nhl.com/ice/m_standings.htm?type=LEA&season=20132014";
 
     my $ua = LWP::UserAgent->new;
     $ua->timeout(10);
     my $req = HTTP::Request->new( GET => $url );
     my $res = $ua->request($req);
+
+    my $te = new HTML::TableExtract( headers => [qw(Team GP W L OT P ROW)] );
+    $te->parse($res->content);
+
+   foreach my $ts ($te->tables) {
+   print "Table (", join(',', $ts->coords), "):\n";
+   foreach my $row ($ts->rows) {
+      print join(',', @$row), "\n";
+   }
+ }
+
+
 
 
 }
