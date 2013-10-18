@@ -70,7 +70,7 @@ my $irc = POE::Component::IRC->spawn(
     ircname => $ircname,
     server  => $server,
     Debug   => 1,
-    Flood   => 1,
+    Flood   => 0,
 ) or die "Oh noooo! $!";
 
 my %cmd_hash;
@@ -543,27 +543,36 @@ sub help {
 sub nhl_standings {
 
     my @prams = @_;
+    my $division = $prams[0];
     my $chan  = $prams[1];
     my $nick  = $prams[2];
 
-    my $url = "http://www.nhl.com/ice/m_standings.htm?type=LEA&season=20132014";
+    if ($division eq undef) {return;}
+
+    my $url = "http://www.nhl.com/ice/m_standings.htm?type=DIV";
 
     my $ua = LWP::UserAgent->new;
-    $ua->timeout(10);
+    $ua->timeout(5);
     my $req = HTTP::Request->new( GET => $url );
     my $res = $ua->request($req);
 
-    my $te = new HTML::TableExtract( headers => [qw(Team GP W L OT P ROW)] );
-    $te->parse($res->content);
+    my @headers = ("$division", 'GP', 'W', 'L', '.+' );  # , 'GP', 'W', 'L', 'OT', 'P'); # $, 'W', 'L'); #  'L', 'OT', 'P', 'ROW'); #  , 'W', 'L', 'OT', 'P');
 
-   foreach my $ts ($te->tables) {
-   print "Table (", join(',', $ts->coords), "):\n";
-   foreach my $row ($ts->rows) {
-      print join(',', @$row), "\n";
-   }
- }
+    my $te = HTML::TableExtract->new( debug=> 0, subtables => 0, automap => 0, headers => [@headers]) || die("Unable create object: $!");
 
+    $te->parse($res->content) || die("Error: $!");
 
+    foreach my $ts ($te->tables) {
+        
+        $irc->yield( privmsg => $chan => "Place   Team     GP   W   L   OTL   P");    
+	foreach my $row ($ts->rows) {
+				
+		chomp(@$row);
+		my $team = @{$row}[1];
+		$team =~ s/\n//g;
+		$irc->yield( privmsg => $chan => "  " . @{$row}[0] . "   "  . $team . "      " . @{$row}[2] . "   " .  @{$row}[3] . "   " . @{$row}[4] . "   " .  @{$row}[5] . "   " . @{$row}[6]);
+	}
 
+    }
 
 }
