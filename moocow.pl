@@ -490,3 +490,4 @@ sub help {
     $irc->yield( privmsg => $nick => "!addquote <quote>: add a new quote" );
     $irc->yield( privmsg => $nick => "!moo: moo." );
 }
+
