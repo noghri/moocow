@@ -12,6 +12,7 @@ use Config::Any::INI;
 use Cache::FileCache;
 use WWW::Wunderground::API;
 use Data::Dumper;
+use HTML::TableExtract;
 
 $Config::Any::INI::MAP_SECTION_SPACE_TO_NESTED_KEY = 0;
 
@@ -544,5 +545,11 @@ sub nhl_standings {
     my $nick  = $prams[2];
 
     my $url = "http://www.nhl.com/ice/m_standings.htm";
+
+    my $ua = LWP::UserAgent->new;
+    $ua->timeout(10);
+    my $req = HTTP::Request->new( GET => $url );
+    my $res = $ua->request($req);
+
 
 }
