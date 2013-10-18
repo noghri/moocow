@@ -75,6 +75,7 @@ $cmd_hash{"u2"}        = sub { youtube(@_); };
 $cmd_hash{"help"}      = sub { help(@_); };
 $cmd_hash{"codeword"}  = sub { codeword(@_); };
 $cmd_hash{"wze"}       = sub { weather_extended(@_); };
+$cmd_hash{"nhl"}       = sub { nhl_standings(@_); };
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_ctcp_version)], ],
     inline_states  => { },
@@ -491,3 +492,12 @@ sub help {
     $irc->yield( privmsg => $nick => "!moo: moo." );
 }
 
+sub nhl_standings {
+
+    my @prams = @_;
+    my $chan  = $prams[1];
+    my $nick  = $prams[2];
+
+    my $url = "http://www.nhl.com/ice/m_standings.htm";
+
+}
