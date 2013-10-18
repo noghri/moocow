@@ -561,16 +561,18 @@ sub nhl_standings {
     my $te = HTML::TableExtract->new( debug=> 0, subtables => 0, automap => 0, headers => [@headers]) || die("Unable create object: $!");
 
     $te->parse($res->content) || die("Error: $!");
+    
+    my $header = sprintf("%-7s %-20s %-3s %-3s %-3s %-3s %-3s", "Place", "Team", "GP", "W", "L", "OTL", "P");
 
     foreach my $ts ($te->tables) {
-        
-        $irc->yield( privmsg => $chan => "Place   Team     GP   W   L   OTL   P");    
+        $irc->yield( privmsg => $chan => $header);    
 	foreach my $row ($ts->rows) {
-				
 		chomp(@$row);
 		my $team = @{$row}[1];
 		$team =~ s/\n//g;
-		$irc->yield( privmsg => $chan => "  " . @{$row}[0] . "   "  . $team . "      " . @{$row}[2] . "   " .  @{$row}[3] . "   " . @{$row}[4] . "   " .  @{$row}[5] . "   " . @{$row}[6]);
+		my $line = sprintf("%-7s %-20s %-3s %-3s %-3s %-3s %-3s", @{$row}[0], $team, @{$row}[2], @{$row}[3],  @{$row}[4], @{$row}[5], @{$row}[6]);
+#		$irc->yield( privmsg => $chan => "  " . @{$row}[0] . "   "  . $team . "      " . @{$row}[2] . "   " .  @{$row}[3] . "   " . @{$row}[4] . "   " .  @{$row}[5] . "   " . @{$row}[6]);
+                $irc->yield(privmsg => $chan => $line);
 	}
 
     }
