@@ -34,6 +34,16 @@ my $trigger  = readconfig('trigger');
 my $dbpath   = readconfig('dbpath');
 my $autourl  = readconfig('autourl');
 
+# for WORD game
+my $word_on = 0;   # !word game
+my $word_ans = ""; # the actual answer
+my %wordppl; # everyone who tries for score keeping
+my $word_s = "";
+
+# sub-routines
+sub say($);
+sub word(@);
+sub hack();
 
 if($autourl =~ /(true|1|yes)/) {
     $autourl = 1;
@@ -76,6 +86,9 @@ $cmd_hash{"help"}      = sub { help(@_); };
 $cmd_hash{"codeword"}  = sub { codeword(@_); };
 $cmd_hash{"wze"}       = sub { weather_extended(@_); };
 $cmd_hash{"nhl"}       = sub { nhl_standings(@_); };
+$cmd_hash{"word"}       = sub { word(@_); };
+$cmd_hash{"hack"}       = sub { hack(); };
+
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_ctcp_version)], ],
     inline_states  => { },
@@ -116,12 +129,22 @@ sub irc_001 {
 }
 
 sub irc_public {
-
     my ( $sender, $who, $where, $what ) = @_[ SENDER, ARG0 .. ARG2 ];
     my $nick = ( split /!/, $who )[0];
     my $channel = $where->[0];
-
-
+    # for the !word game
+    if($word_on && $what eq $word_ans){ # !word game
+            $irc->yield( privmsg => $where->[0] => "That's right! :D");
+            my $whop = $who;
+            $whop =~ s/!.*//;
+            $wordppl{$whop} = ($wordppl{$whop} + 1);
+            $word_ans = "";
+            $word_s = "";
+            $word_on = 0;
+    }
+    if($what =~ m/^hack/i){
+        hack();
+    }
     if($autourl)
     {
       if ( my ($youtube) = $what =~ /^(http:\/\/(www\.youtube\.com|youtube\.com|youtu\.be)\/.*)/ ) { 
@@ -445,34 +468,56 @@ sub title {
     return undef;
 }
 
-sub youtube {
+sub youtube{
+        my $u2 = $3 if($_[0] =~ m/^.*youtu(\.)?be(\.com\/watch\?v=|\/)(.*)/i);
+        my $yt = new WebService::GData::YouTube();
+        say("YouTube: \x02".$yt->get_video_by_id($u2)->title()."\x02 Duration: \x02".$yt->get_video_by_id($u2)->duration."\x02 seconds Views: \x02".$yt->get_video_by_id($u2)->view_count."\x02");
+        say(gogl($_[0]));
+}
 
-    my @prams  = @_;
-    my $u2link = $prams[0];
-    my $chan   = $prams[1];
-    my $u2;
+sub say($){ # just to minimize typing
+        $irc->yield(privmsg => "#threerivers" => $_[0]); # needs to be changed to $channel
+        return;
+}
 
-    my $shorturl = gogl($u2link);
+sub word(@){ # !word game
+        $wordppl{$_[2]} = 0 if(!exists($wordppl{$_[2]}));
+        if($_[0] eq "reset"){ # because there is no timer function
+                say("the word has been reset by ".$_[2]." answer was: " .$word_ans);
+                $word_on = 0;
+                $word_ans = "";
+                return;
+        }elsif($_[0] =~ m/^score(s)?/){ # show your score
+                my $scores = "";
+                while(my($k,$v) = each(%wordppl)){
+                        $scores .= $k.": ".$v.", ";
+                }
+                $scores =~ s/, $//;
+                say($scores);
+                return;
+        }elsif($word_on){ # boolean
+                say("the game is already running with word: (" . $word_s . "), try \"!word reset\" to start over");
+                return;
+        }else{
+                my $no = int(rand(`wc -l words.txt | awk '{print \$1}'`));
+                $word_ans = `sed '$no q;d' words.txt`;
+                chomp $word_ans; # answer
+                my @word = split(//,$word_ans);
+                my $sw = ""; # scrambled word
+                until($#word == -1){
+                        my $rn = int(rand($#word));
+                        $sw .= $word[$rn];
+                        splice(@word,$rn,1);
+                }
+                $word_s = $sw;
+                say($sw);
+                $word_on = 1;
+        }
+        return;
+}
 
-    if ($u2link =~ /youtube/i) {
-      $u2link =~ /http:\/\/www\.youtube\.com\/watch\?v=(.*)/;
-      $u2 = $1;
-    } elsif ($u2link =~ /youtu\.be/i) {
-      $u2link =~ /http:\/\/youtu.be\/(.*)/;
-      $u2 = $1;
-    }
-
-
-    my $yt = new WebService::GData::YouTube();
-
-    my $video = $yt->get_video_by_id($u2);
-
-    my $count    = $video->view_count();
-    my $duration = $video->duration();
-    my $title    = $video->title();
-
-    $irc->yield( privmsg => $chan => "YouTube: \x02$title\x02 Duration: \x02$duration\x02 seconds Views: \x02$count\x02" );
-
+sub hack(){
+    say("hack the planet!");
 }
 
 sub help {
