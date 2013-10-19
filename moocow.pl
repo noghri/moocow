@@ -13,6 +13,7 @@ use Cache::FileCache;
 use WWW::Wunderground::API;
 use Data::Dumper;
 use HTML::TableExtract;
+use LWP::UserAgent::WithCache;
 
 $Config::Any::INI::MAP_SECTION_SPACE_TO_NESTED_KEY = 0;
 
@@ -547,11 +548,11 @@ sub nhl_standings {
     my $chan  = $prams[1];
     my $nick  = $prams[2];
 
-    if ($division eq undef) {return;}
+    return if(!defined($division));
 
     my $url = "http://www.nhl.com/ice/m_standings.htm?type=DIV";
 
-    my $ua = LWP::UserAgent->new;
+    my $ua = LWP::UserAgent::WithCache->new({'namespace' => 'moocowlwp_cache', 'default_expires_in' => 3600} );
     $ua->timeout(5);
     my $req = HTTP::Request->new( GET => $url );
     my $res = $ua->request($req);
