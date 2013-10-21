@@ -91,12 +91,16 @@ $cmd_hash{"wze"}       = sub { weather_extended(@_); };
 $cmd_hash{"nhl"}       = sub { nhl_standings(@_); };
 $cmd_hash{"words"}     = sub { word(@_); };
 $cmd_hash{"hack"}      = sub { hack(@_); };
-$cmd_hash{"adduser"}   = sub { add_user(@_); };
-$cmd_hash{"deluser"}   = sub { del_user(@_); };
-$cmd_hash{"checkuser"} = sub { check_user(@_); };
+
+
+my %pmsg_cmd_hash;
+$pmsg_cmd_hash{"adduser"}   = sub { add_user(@_); };
+$pmsg_cmd_hash{"deluser"}   = sub { del_user(@_); };
+$pmsg_cmd_hash{"checkuser"} = sub { check_user(@_); };
+
 
 POE::Session->create(
-    package_states => [ main => [qw(_default _start irc_001 irc_public irc_ctcp_version irc_join)], ],
+    package_states => [ main => [qw(_default _start irc_001 irc_public irc_msg irc_ctcp_version irc_join)], ],
     inline_states  => { },
     heap => { irc => $irc },
 );
@@ -150,6 +154,22 @@ sub irc_join {
     return;
 
 }
+
+sub irc_msg {
+    my ( $sender, $who, $where, $what ) = @_[ SENDER, ARG0 .. ARG2 ];
+    my ($nick, $user, $host) = parse_user($who);
+
+    return if ( $what !~ /^$trigger(.*)/ );
+    my @cmd = split / +/, $1;
+    chomp(@cmd);
+    my $cmd = shift @cmd;
+    my $cmdargs = join( " ", @cmd );
+    if ( exists $pmsg_cmd_hash{$cmd} ) {
+        $pmsg_cmd_hash{$cmd}->( $cmdargs, $nick, $nick );
+    }
+}    
+
+
 
 sub irc_public {
     my ( $sender, $who, $where, $what ) = @_[ SENDER, ARG0 .. ARG2 ];
@@ -279,7 +299,7 @@ sub addquote {
     $sth->bind_param( 1, $quote );
     $sth->bind_param( 2, $who );
     $sth->bind_param( 3, $channel );
-    DBI::dump_results($sth);
+    #DBI::dump_results($sth);
     $sth->execute();
     if ($@) {
         $irc->yield( privmsg => $channel => "Error inserting quote: " . $sth->err );
@@ -643,7 +663,6 @@ sub add_user {
     }
     $sth->bind_param( 1, $nickname );
     $sth->bind_param( 2, $acl );
-    print "Here\n";
 
 #    $sth->bind_param( 2, $hostmask );
 #    $sth->bind_param( 3, $acl );
@@ -702,7 +721,7 @@ sub del_user {
         return;
    }
    $sth->bind_param( 1, $nickname );
-    DBI::dump_results($sth);
+    #DBI::dump_results($sth);
     $sth->execute();
     if ($@) {
         $irc->yield( privmsg => $chan => "Error deleting user: " . $sth->err );
@@ -735,21 +754,17 @@ sub acl {
    my $query	= q{SELECT users.username AS username, usermask.hostmask AS hostmask, users.access AS access FROM users,usermask WHERE ? GLOB usermask.hostmask};
    
    $sth = $dbh->prepare($query);
-   DBI::dump_results($sth);
+   #DBI::dump_results($sth);
    
    $sth->bind_param(1, $host);
    $sth->execute() || die("Unable to execute $@");
-#   DBI::dump_results($sth);
-   print Dumper($sth);
-   print "Here $host \n";
+
    if( defined( my $res = $sth->fetchrow_hashref ) ) {
-     print "Now " . $res->{'hostmask'} . "\n";
-     print Dumper($res);
      if(matches_mask($res->{'hostmask'},$host)) { 
         $access{'hostmask'} =  $res->{'hostmask'};
         $access{'username'} = $res->{'username'};
         $access{'access'} = $res->{'access'};
-        print Dumper(\%access);
+        #print Dumper(\%access);
         return \%access;
      }
 
@@ -762,18 +777,23 @@ sub check_user {
 
    my @prams = @_;
    my $nickname = $prams[0];
-   my $chan = $prams[1];
+   my $who = $prams[1];
    my $nick = $prams[2];
-
-   my $acl = acl($nickname);
 #   print Dumper($acl);
+   
+   my $nacl = acl($who);
+   
+   if(!defined($nacl) || ($nacl->{'access'} !~ 'O|A'))  { $irc->yield (notice => $nick => "No Access!");  return; } 
+    
+   my $acl = acl($nickname);
+
    if (!defined($acl)) {
 
-      $irc->yield( privmsg => $chan => "No such user." );
+      $irc->yield( privmsg => $who => "No such user." );
       return;
 
    }
    
-   $irc->yield( privmsg => $chan => "User access level for user: " . $acl->{'username'} . " "  . $acl->{'hostmask'} . " " . $acl->{'access'} );
+   $irc->yield( privmsg => $who => "User access level for user: " . $acl->{'username'} . " "  . $acl->{'hostmask'} . " " . $acl->{'access'} );
 
 }
