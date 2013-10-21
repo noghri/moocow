@@ -152,10 +152,10 @@ sub irc_public {
     }
     if($autourl)
     {
-      if ( my ($youtube) = $what =~ /^(http:\/\/(www\.youtube\.com|youtube\.com|youtu\.be)\/.*)/ ) { 
+      if ( my ($youtube) = $what =~ /^(https?:\/\/(www\.youtube\.com|youtube\.com|youtu\.be)\/.*)/ ) { 
         youtube($youtube, $channel, $nick);
       }
-      elsif ( my ($gogl) = $what =~ /^(http:\/\/.*)/ ) {
+      elsif ( my ($gogl) = $what =~ /^(https?:\/\/.*)/ ) {
         gogl( $gogl, $channel, $nick );
       }
     }
