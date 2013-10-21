@@ -99,8 +99,8 @@ $pmsg_cmd_hash{"adduser"}   = sub { add_user(@_); };
 $pmsg_cmd_hash{"deluser"}   = sub { del_user(@_); };
 $pmsg_cmd_hash{"checkuser"} = sub { check_user(@_); };
 
-$pmsg_cmd_chan{"addchan"    = sub { addchan(@_); };
-$pmsg_cmd_chan{"add_chanuser"    = sub { add_chanuser(@_); };
+$pmsg_cmd_hash{"addchan"}   = sub { addchan(@_); };
+$pmsg_cmd_hash{"add_chanuser"}    = sub { add_chanuser(@_); };
 
 
 POE::Session->create(
@@ -650,7 +650,7 @@ sub add_chan {
    
    my $sth = $dbh->prepare($query);
    if($@) {
-      $irc->yield(privmsg, $who, "Error preparing statement: " . $@);
+      $irc->yield(privmsg => $who => "Error preparing statement: " . $@);
    } 
    $sth->bind_param(1, $channel);
    $sth->bind_param(2, $owner);
@@ -663,7 +663,7 @@ sub add_chan {
      
    if($sth->rows > 0)
    {
-       $irc->yield(privmsg, $who => "Added channel $channel with owner: $owner");
+       $irc->yield(privmsg => $who => "Added channel $channel with owner: $owner");
    }
    
 }
@@ -684,6 +684,9 @@ sub add_chanuser {
 
    
    my $query = q{INSERT INTO chanuser (chaccess, userid, chanid) VALUES (?, (SELECT userid FROM users WHERE username = ?), SELECT chanid FROM channel WHERE channame = ?)};
+   
+   my $sth = $dbh->prepare($query);
+ 
    $sth->bind_param(1, $access);
    $sth->bind_param(2, $user);
    $sth->bind_param(3, $channel);
