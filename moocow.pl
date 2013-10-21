@@ -96,7 +96,7 @@ $cmd_hash{"deluser"}   = sub { del_user(@_); };
 $cmd_hash{"checkuser"} = sub { check_user(@_); };
 
 POE::Session->create(
-    package_states => [ main => [qw(_default _start irc_001 irc_public irc_ctcp_version)], ],
+    package_states => [ main => [qw(_default _start irc_001 irc_public irc_ctcp_version irc_join)], ],
     inline_states  => { },
     heap => { irc => $irc },
 );
@@ -132,6 +132,22 @@ sub irc_001 {
     print "Connected to ", $irc->server_name(), "\n";
 
     return;
+}
+
+sub irc_join {
+
+    my ( $umask, $channel) = @_ [ ARG0, ARG1 ];
+    my $nick = ( split /!/, $umask )[0];
+    my $acl = acl($nick);
+
+    if (($acl->{'access'} eq "A") || ($acl->{'access'} eq "O")) {
+
+        $irc->yield( mode => $channel => "+o $nick" );
+   
+    }
+
+    return;
+
 }
 
 sub irc_public {
