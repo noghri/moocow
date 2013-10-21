@@ -418,8 +418,7 @@ sub readconfig {
     return $ini->{$configtext};
 }
 
-sub gogl {
-
+sub gogl_url {
     my @prams   = @_;
     my $url     = $prams[0];
     my $channel = $prams[1];
@@ -439,12 +438,19 @@ sub gogl {
         chomp($line);
         if ( $line =~ /\"id\": \"(.*)\"/ ) 
         { 
-          $irc->yield(privmsg => $channel => "$1");
-          last;
+          return $1;
         }
     }
-    my $title = title($url);
+    return undef;
+}
+
+
+sub gogl {
+    my $url = gogl_url(@_);
+    my $channel = $_[1];
     
+    $irc->yield(privmsg => $channel => $url) if(defined($url));
+    my $title = title($url);
     $irc->yield(privmsg => $channel => title($url)) if(defined($title));
 
 
@@ -474,7 +480,8 @@ sub youtube{
         my $u2 = $3 if($_[0] =~ m/^.*youtu(\.)?be(\.com\/watch\?v=|\/)(.*)/i);
         my $yt = new WebService::GData::YouTube();
         say($_[1],"YouTube: \x02".$yt->get_video_by_id($u2)->title()."\x02 Duration: \x02".$yt->get_video_by_id($u2)->duration."\x02 seconds Views: \x02".$yt->get_video_by_id($u2)->view_count."\x02");
-        gogl(@_);
+        my $url = gogl_url(@_);
+        say($_[1], $url) if(defined($url));
 }
 
 sub say($$){ # just to minimize typing
