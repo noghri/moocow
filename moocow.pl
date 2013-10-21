@@ -548,7 +548,7 @@ sub nhl_standings {
     my $chan  = $prams[1];
     my $nick  = $prams[2];
 
-    return if(!defined($division));
+    return if($division eq "");
 
     my $url = "http://www.nhl.com/ice/m_standings.htm?type=DIV";
 
