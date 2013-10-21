@@ -610,7 +610,7 @@ sub add_user {
 
    $irc->yield ( privmsg => $chan => "Adding user $nickname with a mask of $hostmask and access level $acl in $chan");
 
-   my $query = "INSERT INTO users (username, host, access, channel) values (\"$nickname\", \"$hostmask\", \"$acl\", \"$chan\");";
+   my $query = "INSERT INTO users (username, host, access, channel) values (?, ?, ?, ?);";
 
     my $sth = $dbh->prepare($query);
     if ($@) {
@@ -635,6 +635,34 @@ sub add_user {
 }
 
 sub del_user {
+
+   my @prams = @_;
+   my $nickname = $prams[0];
+   my $chan = $prams[1];
+   my $nick = $prams[2];
+
+   if (acl($nick) ne "A") { return; }
+
+   if ($nickname eq "") { return; }
+
+   my $query = q{DELETE FROM users where username = ?};
+
+   my $sth = $dbh->prepare($query);
+   if ($@) {
+        $irc->yield( privmsg => $chan => "Error inserting user: " . $@ );
+        return;
+   }
+   $sth->bind_param( 1, $nickname );
+    DBI::dump_results($sth);
+    $sth->execute();
+    if ($@) {
+        $irc->yield( privmsg => $chan => "Error deleting user: " . $sth->err );
+    }
+    else {
+        if ( $sth->rows > 0 ) {
+            $irc->yield( privmsg => $chan => "User has been deleted." );
+        }
+    }
 
 }
 
@@ -688,6 +716,13 @@ sub check_user {
    my $nick = $prams[2];
 
    my $acl = acl($nickname);
+
+   if (!defined($acl)) {
+
+      $irc->yield( privmsg => $chan => "No such user." );
+      return;
+
+   }
 
    $irc->yield( privmsg => $chan => "User access level: $acl");
 
