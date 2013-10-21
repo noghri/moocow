@@ -14,6 +14,7 @@ use WWW::Wunderground::API;
 use Data::Dumper;
 use HTML::TableExtract;
 use LWP::UserAgent::WithCache;
+use IRC::Utils ':ALL';
 
 $Config::Any::INI::MAP_SECTION_SPACE_TO_NESTED_KEY = 0;
 
@@ -66,7 +67,7 @@ foreach my $c ( split( ',', $channels ) ) {
 my $dbh = DBI->connect("dbi:SQLite:$dbpath")
   || die "Cannot connect: $DBI::errstr";
 
-my $irc = POE::Component::IRC->spawn(
+my $irc = POE::Component::IRC::State->spawn(
     nick    => $nickname,
     ircname => $ircname,
     server  => $server,
@@ -88,7 +89,7 @@ $cmd_hash{"help"}      = sub { help(@_); };
 $cmd_hash{"codeword"}  = sub { codeword(@_); };
 $cmd_hash{"wze"}       = sub { weather_extended(@_); };
 $cmd_hash{"nhl"}       = sub { nhl_standings(@_); };
-$cmd_hash{"word"}      = sub { word(@_); };
+$cmd_hash{"words"}      = sub { word(@_); };
 $cmd_hash{"hack"}      = sub { hack(@_); };
 $cmd_hash{"adduser"}   = sub { add_user(@_); };
 $cmd_hash{"deluser"}   = sub { del_user(@_); };
@@ -643,9 +644,40 @@ sub acl {
    my $nickname = $prams[0];
    my $chan = $prams[1];
    my $nick = $prams[2];
+   my $sth;
+   my $hostmask;
+   my $tnick;
+   my $access;
 
-   return "A";
+   my $var = $irc->nick_info("$nickname"); 
 
+   my $host = $var->{'Userhost'};
+
+   $host = "$nickname!" . $host;
+
+   my $query    = q{SELECT username,access,host from users};
+
+   $sth = $dbh->prepare($query);
+   $sth->execute() || die("Unable to execute $@");
+
+   while ( defined( my $res = $sth->fetchrow_hashref ) ) {
+
+     if(matches_mask($res->{'host'},$host)) { 
+
+        $hostmask = $res->{'host'};
+        $tnick = $res->{'username'};
+        $access = $res->{'access'};
+
+     }
+
+   }
+ 
+   if(defined($access)) { 
+      return $access;
+   } else {
+      return undef;
+   }
+  
 }
 
 sub check_user {
