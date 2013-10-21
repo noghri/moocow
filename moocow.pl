@@ -140,7 +140,13 @@ sub irc_join {
     my $nick = ( split /!/, $umask )[0];
     my $acl = acl($nick);
 
-    print "Nick has the acl of $acl\n";
+    if (($acl->{'access'} eq "A") || ($acl->{'access'} eq "O")) {
+
+        $irc->yield( mode => $channel => "+o $nick" );
+   
+    }
+
+    return;
 
 }
 
