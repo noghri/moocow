@@ -36,6 +36,7 @@ my $channels = readconfig('channels');
 my $trigger  = readconfig('trigger');
 my $dbpath   = readconfig('dbpath');
 my $autourl  = readconfig('autourl');
+my $master   = readconfig('master');
 
 # for WORD game
 my $word_on = 0;   # !word game
@@ -816,6 +817,14 @@ sub acl {
    my $host = $var->{'Userhost'};
 
    $host = "$nickname!" . $host;
+
+   if(matches_mask($master, $host))
+   {
+      $access{'hostmask'} = $master;
+      $access{'username'} = 'master user';
+      $access{'access'} = 'A';
+      return \%access;
+   }
 
    my $query	= q{SELECT users.username AS username, usermask.hostmask AS hostmask, users.access AS access FROM users,usermask WHERE ? GLOB usermask.hostmask};
    
