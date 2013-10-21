@@ -547,7 +547,9 @@ sub nhl_standings {
     my $chan  = $prams[1];
     my $nick  = $prams[2];
 
-    if ($division eq undef) {return;}
+    if (!defined($division)) {return;}
+
+    $division = lc($division);
 
     my $url = "http://www.nhl.com/ice/m_standings.htm?type=DIV";
 
@@ -556,7 +558,7 @@ sub nhl_standings {
     my $req = HTTP::Request->new( GET => $url );
     my $res = $ua->request($req);
 
-    my @headers = ("$division", 'GP', 'W', 'L', '.+' );  # , 'GP', 'W', 'L', 'OT', 'P'); # $, 'W', 'L'); #  'L', 'OT', 'P', 'ROW'); #  , 'W', 'L', 'OT', 'P');
+    my @headers = ("$division", 'GP', 'W', 'L', '.+' );
 
     my $te = HTML::TableExtract->new( debug=> 0, subtables => 0, automap => 0, headers => [@headers]) || die("Unable create object: $!");
 
@@ -571,7 +573,6 @@ sub nhl_standings {
 		my $team = @{$row}[1];
 		$team =~ s/\n//g;
 		my $line = sprintf("%-7s %-20s %-3s %-3s %-3s %-3s %-3s", @{$row}[0], $team, @{$row}[2], @{$row}[3],  @{$row}[4], @{$row}[5], @{$row}[6]);
-#		$irc->yield( privmsg => $chan => "  " . @{$row}[0] . "   "  . $team . "      " . @{$row}[2] . "   " .  @{$row}[3] . "   " . @{$row}[4] . "   " .  @{$row}[5] . "   " . @{$row}[6]);
                 $irc->yield(privmsg => $chan => $line);
 	}
 
