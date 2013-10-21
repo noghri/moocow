@@ -633,7 +633,7 @@ sub nhl_standings {
 
 }
 
-sub add_chan {
+sub addchan {
    my @prams = @_;
    my $who = $prams[1];
    my $nick = $prams[2];
@@ -645,19 +645,22 @@ sub add_chan {
    my $owner = $args[1];
 
    if (!defined($nacl) || $nacl->{'access'} ne "A") { $irc->yield (notice => $who => "No Access!");  return; }
+
    
-   my $query = q{INSERT INTO channel (channame, ownerid) (?,  (SELECT userid FROM users WHERE username = ?))};
-   
+   my $query = q{INSERT INTO channel (channame, ownerid) VALUES (?,  (SELECT userid FROM users WHERE username = ?))};
+
    my $sth = $dbh->prepare($query);
    if($@) {
       $irc->yield(privmsg => $who => "Error preparing statement: " . $@);
    } 
    $sth->bind_param(1, $channel);
    $sth->bind_param(2, $owner);
- 
-   $sth->execute();
-   if ($@) {
-        $irc->yield( privmsg => $who => "Error adding channel: " . $sth->err );
+
+
+   my $rv = $sth->execute();
+   
+   if (!$rv) {
+        $irc->yield( privmsg => $who => "Error adding channel: " . $sth->errstr );
         return;
    }
      
@@ -683,16 +686,19 @@ sub add_chanuser {
    my $access = $args[2];
 
    
-   my $query = q{INSERT INTO chanuser (chaccess, userid, chanid) VALUES (?, (SELECT userid FROM users WHERE username = ?), SELECT chanid FROM channel WHERE channame = ?)};
+   my $query = q{INSERT INTO chanuser (chaccess, userid, chanid) VALUES (?, (SELECT userid FROM users WHERE username = ?), (SELECT chanid FROM channel WHERE channame = ?))};
    
    my $sth = $dbh->prepare($query);
+   if ($@) {
+     $irc->yield(  privmsg => $who => "Error adding preparing statement to add user to channel: " . $@ );
+   }
  
    $sth->bind_param(1, $access);
    $sth->bind_param(2, $user);
    $sth->bind_param(3, $channel);
-   $sth->execute();
-   if ($@) {
-        $irc->yield( privmsg => $who => "Error adding user to channel: " . $sth->err );
+   my $rv = $sth->execute();
+   if (!$rv) {
+        $irc->yield( privmsg => $who => "Error adding user to channel: " . $sth->errstr );
         $sth->finish;
         $dbh->rollback;
         return;
@@ -738,9 +744,9 @@ sub add_user {
 #    $sth->bind_param( 3, $acl );
 #    $sth->bind_param( 4, $chan );
 #    DBI::dump_results($sth);
-    $sth->execute();
-    if ($@) {
-        $irc->yield( privmsg => $chan => "Error adding user: " . $sth->err );
+    my $rv = $sth->execute();
+    if (!$rv) {
+        $irc->yield( privmsg => $chan => "Error adding user: " . $sth->errstr );
         $sth->finish;
         $dbh->rollback;
         return;
@@ -756,15 +762,15 @@ sub add_user {
     
     $sth->bind_param(1, $hostmask);
     $sth->bind_param(2, $nickname);
-    $sth->execute();
+    $rv = $sth->execute();
     
-    if ($@) {
-        $irc->yield( privmsg => $chan => "Error adding usermask: " . $sth->err );
+    if (!$rv) {
+        $irc->yield( privmsg => $chan => "Error adding usermask: " . $sth->errstr );
         $sth->finish;
         $dbh->rollback;
         return;
     }
-
+    $dbh->commit; 
     if ( $sth->rows > 0 ) {
             $irc->yield( privmsg => $chan => "User has been added." );
     }
@@ -792,8 +798,8 @@ sub del_user {
    }
    $sth->bind_param( 1, $nickname );
     #DBI::dump_results($sth);
-    $sth->execute();
-    if ($@) {
+    my $rv = $sth->execute();
+    if (!$rv) {
         $irc->yield( privmsg => $chan => "Error deleting user: " . $sth->err );
     }
     else {
