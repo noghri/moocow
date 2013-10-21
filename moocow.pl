@@ -90,6 +90,9 @@ $cmd_hash{"wze"}       = sub { weather_extended(@_); };
 $cmd_hash{"nhl"}       = sub { nhl_standings(@_); };
 $cmd_hash{"word"}       = sub { word(@_); };
 $cmd_hash{"hack"}       = sub { hack(@_); };
+$cmd_hash{"adduser"}       = sub { add_user(@_); };
+$cmd_hash{"deluser"}       = sub { del_user(@_); };
+$cmd_hash{"checkuser"}       = sub { check_user(@_); };
 
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_ctcp_version)], ],
@@ -577,4 +580,71 @@ sub nhl_standings {
 
     }
 
+}
+
+sub add_user {
+
+   my @prams = @_;
+   my $chan = $prams[1];
+   my $nick = $prams[2];
+
+   my @args = split / /,$prams[0];
+
+   if (acl($nick) ne "A") { return; }
+
+   my $nickname = $args[0];
+   my $hostmask = $args[1];
+   my $acl      = $args[2];
+
+   if (($nickname eq "") || ($hostmask eq "") || ($acl eq "")) { return; }
+
+   $irc->yield ( privmsg => $chan => "Adding user $nickname with a mask of $hostmask and access level $acl in $chan");
+
+   my $query = "INSERT INTO users (username, host, access, channel) values (\"$nickname\", \"$hostmask\", \"$acl\", \"$chan\");";
+
+    my $sth = $dbh->prepare($query);
+    if ($@) {
+        $irc->yield( privmsg => $chan => "Error inserting user: " . $@ );
+        return;
+    }
+    $sth->bind_param( 1, $nickname );
+    $sth->bind_param( 2, $hostmask );
+    $sth->bind_param( 3, $acl );
+    $sth->bind_param( 4, $chan );
+    DBI::dump_results($sth);
+    $sth->execute();
+    if ($@) {
+        $irc->yield( privmsg => $chan => "Error adding user: " . $sth->err );
+    }
+    else {
+        if ( $sth->rows > 0 ) {
+            $irc->yield( privmsg => $chan => "User has been added." );
+        }
+    }
+
+}
+
+sub del_user {
+
+}
+
+sub acl {
+
+   my @prams = @_;
+   my $nickname = $prams[0];
+   my $chan = $prams[1];
+   my $nick = $prams[2];
+
+   return "A";
+
+}
+
+sub check_user {
+
+   my @prams = @_;
+   my $nickname = $prams[0];
+   my $chan = $prams[1];
+   my $nick = $prams[2];
+
+   acl($nickname);
 }
