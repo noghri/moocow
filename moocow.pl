@@ -560,6 +560,8 @@ sub nhl_standings {
 
     return if($division eq "");
 
+    $division = lc($division);
+
     my $url = "http://www.nhl.com/ice/m_standings.htm?type=DIV";
 
     my $ua = LWP::UserAgent::WithCache->new({'namespace' => 'moocowlwp_cache', 'default_expires_in' => 3600} );
