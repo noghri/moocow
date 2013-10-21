@@ -88,11 +88,11 @@ $cmd_hash{"help"}      = sub { help(@_); };
 $cmd_hash{"codeword"}  = sub { codeword(@_); };
 $cmd_hash{"wze"}       = sub { weather_extended(@_); };
 $cmd_hash{"nhl"}       = sub { nhl_standings(@_); };
-$cmd_hash{"word"}       = sub { word(@_); };
-$cmd_hash{"hack"}       = sub { hack(@_); };
-$cmd_hash{"adduser"}       = sub { add_user(@_); };
-$cmd_hash{"deluser"}       = sub { del_user(@_); };
-$cmd_hash{"checkuser"}       = sub { check_user(@_); };
+$cmd_hash{"word"}      = sub { word(@_); };
+$cmd_hash{"hack"}      = sub { hack(@_); };
+$cmd_hash{"adduser"}   = sub { add_user(@_); };
+$cmd_hash{"deluser"}   = sub { del_user(@_); };
+$cmd_hash{"checkuser"} = sub { check_user(@_); };
 
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_ctcp_version)], ],
@@ -646,5 +646,8 @@ sub check_user {
    my $chan = $prams[1];
    my $nick = $prams[2];
 
-   acl($nickname);
+   my $acl = acl($nickname);
+
+   $irc->yield( privmsg => $chan => "User access level: $acl");
+
 }
