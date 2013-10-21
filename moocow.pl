@@ -39,9 +39,9 @@ my $autourl  = readconfig('autourl');
 my $master   = readconfig('master');
 
 # for WORD game
-my $word_on = 0;   # !word game
-my $word_ans = ""; # the actual answer
-my %wordppl; # everyone who tries for score keeping
+my $word_on  = 0;     # !word game
+my $word_ans = "";    # the actual answer
+my %wordppl;          # everyone who tries for score keeping
 my $word_s = "";
 
 # sub-routines
@@ -49,15 +49,14 @@ sub say($$);
 sub word(@);
 sub hack(@);
 
-if($autourl =~ /(true|1|yes)/) {
+if ( $autourl =~ /(true|1|yes)/ ) {
     $autourl = 1;
-} else {
-  $autourl = 0;
+}
+else {
+    $autourl = 0;
 }
 
 my %chans;
-
-
 
 foreach my $c ( split( ',', $channels ) ) {
     my ( $chan, $key ) = split( / /, $c );
@@ -93,20 +92,18 @@ $cmd_hash{"nhl"}       = sub { nhl_standings(@_); };
 $cmd_hash{"words"}     = sub { word(@_); };
 $cmd_hash{"hack"}      = sub { hack(@_); };
 
-
 my %pmsg_cmd_hash;
 $pmsg_cmd_hash{"adduser"}   = sub { add_user(@_); };
 $pmsg_cmd_hash{"deluser"}   = sub { del_user(@_); };
 $pmsg_cmd_hash{"checkuser"} = sub { check_user(@_); };
 
-$pmsg_cmd_hash{"addchan"}   = sub { addchan(@_); };
-$pmsg_cmd_hash{"add_chanuser"}    = sub { add_chanuser(@_); };
-
+$pmsg_cmd_hash{"addchan"}      = sub { addchan(@_); };
+$pmsg_cmd_hash{"add_chanuser"} = sub { add_chanuser(@_); };
 
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_msg irc_ctcp_version irc_nick_sync)], ],
-    inline_states  => { },
-    heap => { irc => $irc },
+    inline_states  => {},
+    heap           => { irc  => $irc },
 );
 
 $poe_kernel->run();
@@ -117,13 +114,23 @@ sub _start {
     # retrieve our component's object from the heap where we stashed it
     my $irc = $heap->{irc};
     $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans ) );
-    $irc->plugin_add( 'Connector', POE::Component::IRC::Plugin::Connector->new(delay => 60, reconnect => 5));
-    $irc->plugin_add('NickReclaim', POE::Component::IRC::Plugin::NickReclaim->new( poll => 30));
-    $irc->plugin_add('CTCP', POE::Component::IRC::Plugin::CTCP->new(
-                      version => "moocow 0.01 - its perl!",
-                      userinfo => "I am a cow, not a user!",
-                      clientinfo => "moocow - its perl!",
-                      source => "grass"));
+    $irc->plugin_add(
+        'Connector',
+        POE::Component::IRC::Plugin::Connector->new(
+            delay     => 60,
+            reconnect => 5
+        )
+    );
+    $irc->plugin_add( 'NickReclaim', POE::Component::IRC::Plugin::NickReclaim->new( poll => 30 ) );
+    $irc->plugin_add(
+        'CTCP',
+        POE::Component::IRC::Plugin::CTCP->new(
+            version    => "moocow 0.01 - its perl!",
+            userinfo   => "I am a cow, not a user!",
+            clientinfo => "moocow - its perl!",
+            source     => "grass"
+        )
+    );
     $irc->yield( register => 'all' );
     $irc->yield( connect  => {} );
     return;
@@ -144,14 +151,15 @@ sub irc_001 {
 
 sub irc_nick_sync {
 
-    my ( $umask, $channel) = @_ [ ARG0, ARG1 ];
+    my ( $umask, $channel ) = @_[ ARG0, ARG1 ];
     my $nick = ( split /!/, $umask )[0];
-    my $acl = chan_acl($nick, $channel);
-    return if(!defined($acl));
-     
-    if (($acl->{'access'} eq "A") || ($acl->{'access'} eq "O")) {
+    my $acl = chan_acl( $nick, $channel );
+    return if ( !defined($acl) );
+
+    if ( ( $acl->{'access'} eq "A" ) || ( $acl->{'access'} eq "O" ) ) {
         $irc->yield( mode => $channel => "+o $nick" );
-    } elsif ($acl->{'access'} eq "V") {
+    }
+    elsif ( $acl->{'access'} eq "V" ) {
         $irc->yield( mode => $channel => "+v $nick" );
     }
 
@@ -161,7 +169,7 @@ sub irc_nick_sync {
 
 sub irc_msg {
     my ( $sender, $who, $where, $what ) = @_[ SENDER, ARG0 .. ARG2 ];
-    my ($nick, $user, $host) = parse_user($who);
+    my ( $nick, $user, $host ) = parse_user($who);
 
     return if ( $what !~ /^$trigger(.*)/ );
     my @cmd = split / +/, $1;
@@ -171,35 +179,33 @@ sub irc_msg {
     if ( exists $pmsg_cmd_hash{$cmd} ) {
         $pmsg_cmd_hash{$cmd}->( $cmdargs, $nick, $nick );
     }
-}    
-
-
+}
 
 sub irc_public {
     my ( $sender, $who, $where, $what ) = @_[ SENDER, ARG0 .. ARG2 ];
     my $nick = ( split /!/, $who )[0];
     my $channel = $where->[0];
+
     # for the !word game
-    if($word_on && $what eq $word_ans){ # !word game
-            $irc->yield( privmsg => $where->[0] => "That's right! :D");
-            my $whop = $who;
-            $whop =~ s/!.*//;
-            $wordppl{$whop} = ($wordppl{$whop} + 1);
-            $word_ans = "";
-            $word_s = "";
-            $word_on = 0;
+    if ( $word_on && $what eq $word_ans ) {    # !word game
+        $irc->yield( privmsg => $where->[0] => "That's right! :D" );
+        my $whop = $who;
+        $whop =~ s/!.*//;
+        $wordppl{$whop} = ( $wordppl{$whop} + 1 );
+        $word_ans       = "";
+        $word_s         = "";
+        $word_on        = 0;
     }
-    if($what =~ m/^hack/i){
+    if ( $what =~ m/^hack/i ) {
         hack();
     }
-    if($autourl)
-    {
-      if ( my ($youtube) = $what =~ /^(https?:\/\/(www\.youtube\.com|youtube\.com|youtu\.be)\/.*)/ ) { 
-        youtube($youtube, $channel, $nick);
-      }
-      elsif ( my ($gogl) = $what =~ /^(https?:\/\/.*)/ ) {
-        gogl( $gogl, $channel, $nick );
-      }
+    if ($autourl) {
+        if ( my ($youtube) = $what =~ /^(https?:\/\/(www\.youtube\.com|youtube\.com|youtu\.be)\/.*)/ ) {
+            youtube( $youtube, $channel, $nick );
+        }
+        elsif ( my ($gogl) = $what =~ /^(https?:\/\/.*)/ ) {
+            gogl( $gogl, $channel, $nick );
+        }
     }
 
     return if ( $what !~ /^$trigger(.*)/ );
@@ -293,9 +299,8 @@ sub addquote {
     my $channel = $prams[1];
     my $who     = $prams[2];
 
-    my $query =
-      'INSERT INTO quotes(quote, usermask, channel, timestamp) VALUES (?, ?, LOWER(?), strftime(\'%s\',\'now\'))';
-    my $sth = $dbh->prepare($query);
+    my $query = 'INSERT INTO quotes(quote, usermask, channel, timestamp) VALUES (?, ?, LOWER(?), strftime(\'%s\',\'now\'))';
+    my $sth   = $dbh->prepare($query);
     if ($@) {
         $irc->yield( privmsg => $channel => "Error inserting quote: " . $@ );
         return;
@@ -303,6 +308,7 @@ sub addquote {
     $sth->bind_param( 1, $quote );
     $sth->bind_param( 2, $who );
     $sth->bind_param( 3, $channel );
+
     #DBI::dump_results($sth);
     $sth->execute();
     if ($@) {
@@ -321,40 +327,46 @@ sub weather_extended {
     my $chan   = $prams[1];
     my $apikey = readconfig('apikey');
 
-    my $wun = new WWW::Wunderground::API(location => $zip, api_key => $apikey, auto_api => 1,  cache=>Cache::FileCache->new({ namespace=>'moocow_wundercache', default_expires_in=>2400 }));
+    my $wun = new WWW::Wunderground::API(
+        location => $zip,
+        api_key  => $apikey,
+        auto_api => 1,
+        cache    => Cache::FileCache->new( { namespace => 'moocow_wundercache', default_expires_in => 2400 } )
+    );
 
-    if($wun->response->error->description)
-    {
-        $irc->yield(privmsg => $chan => "No results: " . $wun->response->error->description);
-        return;
-    }
-    
-    if($wun->response->results)
-    {
-        $irc->yield(privmsg => $chan => "Too many results for location $zip");
+    if ( $wun->response->error->description ) {
+        $irc->yield( privmsg => $chan => "No results: " . $wun->response->error->description );
         return;
     }
 
-    my $cond = $wun->conditions;
+    if ( $wun->response->results ) {
+        $irc->yield( privmsg => $chan => "Too many results for location $zip" );
+        return;
+    }
+
+    my $cond    = $wun->conditions;
     my $updated = $cond->observation_time;
     $updated =~ s/Last Updated on //;
     my $location = $cond->display_location->city;
-    my $weather = $cond->weather;
-    my $temp = $cond->temperature_string;
-    my $feels = $cond->feelslike_string;
-    my $uv = $cond->UV;
-    my $humid = $cond->relative_humidity;
-    my $pressin = $cond->pressure_in;
-    my $pressmb = $cond->pressure_mb;
-    my $wind = $cond->wind_string;
+    my $weather  = $cond->weather;
+    my $temp     = $cond->temperature_string;
+    my $feels    = $cond->feelslike_string;
+    my $uv       = $cond->UV;
+    my $humid    = $cond->relative_humidity;
+    my $pressin  = $cond->pressure_in;
+    my $pressmb  = $cond->pressure_mb;
+    my $wind     = $cond->wind_string;
     $wind =~ s/From the //;
-    my $dew = $cond->dewpoint_string;
+    my $dew    = $cond->dewpoint_string;
     my $precip = $cond->precip_today_string;
-    #Harpers Ferry, WV; Updated: 3:00 PM EDT on October 17, 2013; Conditions: Overcast; Temperature: 71.2°F (21.8°C); UV: 1/16 Humidity: 75%; Pressure: 29.79 in/2054 hPa (Falling); Wind: SSE at 5.0 MPH (8 KPH)
-    $irc->yield(privmsg => $chan => "WX $location Updated: $updated Conditions: $weather: Temp: $temp Feels like: $feels Dewpoint: $dew UV: $uv Humidity: $humid: Pressure: ${pressin}/in/${pressmb} MB Wind: $wind Precip: $precip");
-#    my $resp = $wun->r->full_location . "Updated: $obs"
-    return;
 
+#Harpers Ferry, WV; Updated: 3:00 PM EDT on October 17, 2013; Conditions: Overcast; Temperature: 71.2°F (21.8°C); UV: 1/16 Humidity: 75%; Pressure: 29.79 in/2054 hPa (Falling); Wind: SSE at 5.0 MPH (8 KPH)
+    $irc->yield( privmsg => $chan =>
+"WX $location Updated: $updated Conditions: $weather: Temp: $temp Feels like: $feels Dewpoint: $dew UV: $uv Humidity: $humid: Pressure: ${pressin}/in/${pressmb} MB Wind: $wind Precip: $precip"
+    );
+
+    #    my $resp = $wun->r->full_location . "Updated: $obs"
+    return;
 
 }
 
@@ -365,31 +377,34 @@ sub weather {
     my $chan   = $prams[1];
     my $apikey = readconfig('apikey');
 
-    my $wun = new WWW::Wunderground::API(location => $zip, api_key => $apikey, auto_api => 1,  cache=>Cache::FileCache->new({ namespace=>'moocow_wundercache', default_expires_in=>2400 }));
+    my $wun = new WWW::Wunderground::API(
+        location => $zip,
+        api_key  => $apikey,
+        auto_api => 1,
+        cache    => Cache::FileCache->new( { namespace => 'moocow_wundercache', default_expires_in => 2400 } )
+    );
 
-    if($wun->response->error->description)
-    {
-        $irc->yield(privmsg => $chan => "No results: " . $wun->response->error->description);
+    if ( $wun->response->error->description ) {
+        $irc->yield( privmsg => $chan => "No results: " . $wun->response->error->description );
         return;
     }
-    
-    if($wun->response->results)
-    {
-        $irc->yield(privmsg => $chan => "Too many results for location $zip");
+
+    if ( $wun->response->results ) {
+        $irc->yield( privmsg => $chan => "Too many results for location $zip" );
         return;
     }
-#    print Dumper($wun->conditions);
-    my $city = $wun->conditions->observation_location->full;
-    my $temp = $wun->conditions->temperature_string;
-    my $humidity = $wun->conditions->relative_humidity;
+
+    #    print Dumper($wun->conditions);
+    my $city       = $wun->conditions->observation_location->full;
+    my $temp       = $wun->conditions->temperature_string;
+    my $humidity   = $wun->conditions->relative_humidity;
     my $wind_speed = $wun->conditions->wind_string;
-    my $weather = $wun->conditions->weather;
-    my $forecast = $wun->forecast->txt_forecast->forecastday->[0]{fcttext};
+    my $weather    = $wun->conditions->weather;
+    my $forecast   = $wun->forecast->txt_forecast->forecastday->[0]{fcttext};
 
-    $irc->yield( privmsg => $chan => "Weather for $city: Conditions $weather Temp: $temp Humidity: $humidity Wind: $wind_speed"); 
-    $irc->yield( privmsg => $chan => "$forecast");
+    $irc->yield( privmsg => $chan => "Weather for $city: Conditions $weather Temp: $temp Humidity: $humidity Wind: $wind_speed" );
+    $irc->yield( privmsg => $chan => "$forecast" );
 }
-
 
 sub coinflip {
     my @prams   = @_;
@@ -408,27 +423,30 @@ sub coinflip {
 }
 
 sub codeword {
-    my @prams   = @_;
+    my @prams    = @_;
     my $codeword = $prams[0];
-    my $channel = $prams[1];
-    my $kickee  = $prams[2];
-    my $kickres = "Don't try to make up codewords!";
- 
-    if ($codeword =~ /pink-ribbons/i) {
-      $kickee = "jchawk";
-      $kickres = "PINK RIBBONS!";
-    } elsif ($codeword =~ /slacker/i) {
-      $kickee = "ktuli";
-      $kickres = "SLACKER!";
-    } elsif ($codeword =~ /dirtbag/i) {
-      $kickee = "noghri";
-      $kickres = "DIRTBAG!";
-    } elsif ($codeword =~ /wonderbread/i) {
-      $kickee = "tonyj";
-      $kickres = "WONDERBREAD!!!";
+    my $channel  = $prams[1];
+    my $kickee   = $prams[2];
+    my $kickres  = "Don't try to make up codewords!";
+
+    if ( $codeword =~ /pink-ribbons/i ) {
+        $kickee  = "jchawk";
+        $kickres = "PINK RIBBONS!";
+    }
+    elsif ( $codeword =~ /slacker/i ) {
+        $kickee  = "ktuli";
+        $kickres = "SLACKER!";
+    }
+    elsif ( $codeword =~ /dirtbag/i ) {
+        $kickee  = "noghri";
+        $kickres = "DIRTBAG!";
+    }
+    elsif ( $codeword =~ /wonderbread/i ) {
+        $kickee  = "tonyj";
+        $kickres = "WONDERBREAD!!!";
     }
 
-    $irc->yield(kick => $channel => $kickee => $kickres);
+    $irc->yield( kick => $channel => $kickee => $kickres );
 }
 
 sub entertain {
@@ -448,7 +466,8 @@ my $ini;
 
 sub parseconfig {
     my $path = $_[0];
-    $ini = Config::Any::INI->load($path) || die("Unable to parse config file $path: $!");
+    $ini = Config::Any::INI->load($path)
+      || die("Unable to parse config file $path: $!");
 }
 
 sub readconfig {
@@ -481,23 +500,20 @@ sub gogl_url {
     foreach my $line (@data) {
 
         chomp($line);
-        if ( $line =~ /\"id\": \"(.*)\"/ ) 
-        { 
-          return $1;
+        if ( $line =~ /\"id\": \"(.*)\"/ ) {
+            return $1;
         }
     }
     return undef;
 }
 
-
 sub gogl {
-    my $url = gogl_url(@_);
+    my $url     = gogl_url(@_);
     my $channel = $_[1];
-    
-    $irc->yield(privmsg => $channel => $url) if(defined($url));
-    my $title = title($url);
-    $irc->yield(privmsg => $channel => title($url)) if(defined($title));
 
+    $irc->yield( privmsg => $channel => $url ) if ( defined($url) );
+    my $title = title($url);
+    $irc->yield( privmsg => $channel => title($url) ) if ( defined($title) );
 
 }
 
@@ -521,57 +537,67 @@ sub title {
     return undef;
 }
 
-sub youtube{
-        my $u2 = $3 if($_[0] =~ m/^.*youtu(\.)?be(\.com\/watch\?v=|\/)(.*)/i);
-        my $yt = new WebService::GData::YouTube();
-        say($_[1],"YouTube: \x02".$yt->get_video_by_id($u2)->title()."\x02 Duration: \x02".$yt->get_video_by_id($u2)->duration."\x02 seconds Views: \x02".$yt->get_video_by_id($u2)->view_count."\x02");
-        my $url = gogl_url(@_);
-        say($_[1], $url) if(defined($url));
+sub youtube {
+    my $u2 = $3 if ( $_[0] =~ m/^.*youtu(\.)?be(\.com\/watch\?v=|\/)(.*)/i );
+    my $yt = new WebService::GData::YouTube();
+    say( $_[1],
+            "YouTube: \x02"
+          . $yt->get_video_by_id($u2)->title()
+          . "\x02 Duration: \x02"
+          . $yt->get_video_by_id($u2)->duration
+          . "\x02 seconds Views: \x02"
+          . $yt->get_video_by_id($u2)->view_count
+          . "\x02" );
+    my $url = gogl_url(@_);
+    say( $_[1], $url ) if ( defined($url) );
 }
 
-sub say($$){ # just to minimize typing
-        $irc->yield(privmsg => $_[0] => $_[1]); # needs to be changed to $channel
+sub say($$) {    # just to minimize typing
+    $irc->yield( privmsg => $_[0] => $_[1] );    # needs to be changed to $channel
+    return;
+}
+
+sub word(@) {                                    # !word game
+    $wordppl{ $_[2] } = 0 if ( !exists( $wordppl{ $_[2] } ) );
+    if ( $_[0] eq "reset" ) {                    # because there is no timer function
+        say( $_[1], "the word has been reset by " . $_[2] . " answer was: " . $word_ans );
+        $word_on  = 0;
+        $word_ans = "";
         return;
-}
-
-sub word(@){ # !word game
-        $wordppl{$_[2]} = 0 if(!exists($wordppl{$_[2]}));
-        if($_[0] eq "reset"){ # because there is no timer function
-                say($_[1],"the word has been reset by ".$_[2]." answer was: " .$word_ans);
-                $word_on = 0;
-                $word_ans = "";
-                return;
-        }elsif($_[0] =~ m/^score(s)?/){ # show your score
-                my $scores = "";
-                while(my($k,$v) = each(%wordppl)){
-                        $scores .= $k.": ".$v.", ";
-                }
-                $scores =~ s/, $//;
-                say($_[1],$scores);
-                return;
-        }elsif($word_on){ # boolean
-                say($_[1],"the game is already running with word: (" . $word_s . "), try \"!word reset\" to start over");
-                return;
-        }else{
-                my $no = int(rand(`wc -l /home/trevelyn/words.txt | awk '{print \$1}'`));
-                $word_ans = `sed '$no q;d' /home/trevelyn/words.txt`;
-                chomp $word_ans; # answer
-                my @word = split(//,$word_ans);
-                my $sw = ""; # scrambled word
-                until($#word == -1){
-                        my $rn = int(rand($#word));
-                        $sw .= $word[$rn];
-                        splice(@word,$rn,1);
-                }
-                $word_s = $sw;
-                say($_[1],$sw);
-                $word_on = 1;
+    }
+    elsif ( $_[0] =~ m/^score(s)?/ ) {           # show your score
+        my $scores = "";
+        while ( my ( $k, $v ) = each(%wordppl) ) {
+            $scores .= $k . ": " . $v . ", ";
         }
+        $scores =~ s/, $//;
+        say( $_[1], $scores );
         return;
+    }
+    elsif ($word_on) {                           # boolean
+        say( $_[1], "the game is already running with word: (" . $word_s . "), try \"!word reset\" to start over" );
+        return;
+    }
+    else {
+        my $no = int( rand(`wc -l /home/trevelyn/words.txt | awk '{print \$1}'`) );
+        $word_ans = `sed '$no q;d' /home/trevelyn/words.txt`;
+        chomp $word_ans;                         # answer
+        my @word = split( //, $word_ans );
+        my $sw   = "";                           # scrambled word
+        until ( $#word == -1 ) {
+            my $rn = int( rand($#word) );
+            $sw .= $word[$rn];
+            splice( @word, $rn, 1 );
+        }
+        $word_s = $sw;
+        say( $_[1], $sw );
+        $word_on = 1;
+    }
+    return;
 }
 
-sub hack(@){
-    say($_[1],"hack the planet!");
+sub hack(@) {
+    say( $_[1], "hack the planet!" );
 }
 
 sub help {
@@ -595,12 +621,12 @@ sub help {
 
 sub nhl_standings {
 
-    my @prams = @_;
+    my @prams    = @_;
     my $division = $prams[0];
-    my $chan  = $prams[1];
-    my $nick  = $prams[2];
+    my $chan     = $prams[1];
+    my $nick     = $prams[2];
 
-    return if($division eq "");
+    return if ( $division eq "" );
 
     $division = lc($division);
 
@@ -608,203 +634,210 @@ sub nhl_standings {
 
     my $url = "http://www.nhl.com/ice/m_standings.htm?type=DIV";
 
-    my $ua = LWP::UserAgent::WithCache->new({'namespace' => 'moocowlwp_cache', 'default_expires_in' => 3600} );
+    my $ua = LWP::UserAgent::WithCache->new( { 'namespace' => 'moocowlwp_cache', 'default_expires_in' => 3600 } );
     $ua->timeout(5);
     my $req = HTTP::Request->new( GET => $url );
     my $res = $ua->request($req);
 
-    my @headers = ("$division", 'GP', 'W', 'L', '.+' );
+    my @headers = ( "$division", 'GP', 'W', 'L', '.+' );
 
-    my $te = HTML::TableExtract->new( debug=> 0, subtables => 0, automap => 0, headers => [@headers]) || die("Unable create object: $!");
+    my $te = HTML::TableExtract->new(
+        debug     => 0,
+        subtables => 0,
+        automap   => 0,
+        headers   => [@headers]
+    ) || die("Unable create object: $!");
 
-    $te->parse($res->content) || die("Error: $!");
-    
-    my $header = sprintf("%-7s %-20s %-3s %-3s %-3s %-3s %-3s", "Place", "Team", "GP", "W", "L", "OTL", "P");
+    $te->parse( $res->content ) || die("Error: $!");
 
-    foreach my $ts ($te->tables) {
-        $irc->yield( privmsg => $chan => $header);    
-	foreach my $row ($ts->rows) {
-		chomp(@$row);
-		my $team = @{$row}[1];
-		$team =~ s/\n//g;
-		my $line = sprintf("%-7s %-20s %-3s %-3s %-3s %-3s %-3s", @{$row}[0], $team, @{$row}[2], @{$row}[3],  @{$row}[4], @{$row}[5], @{$row}[6]);
-                $irc->yield(privmsg => $chan => $line);
-	}
+    my $header = sprintf( "%-7s %-20s %-3s %-3s %-3s %-3s %-3s", "Place", "Team", "GP", "W", "L", "OTL", "P" );
+
+    foreach my $ts ( $te->tables ) {
+        $irc->yield( privmsg => $chan => $header );
+        foreach my $row ( $ts->rows ) {
+            chomp(@$row);
+            my $team = @{$row}[1];
+            $team =~ s/\n//g;
+            my $line = sprintf( "%-7s %-20s %-3s %-3s %-3s %-3s %-3s", @{$row}[0], $team, @{$row}[2], @{$row}[3], @{$row}[4], @{$row}[5], @{$row}[6] );
+            $irc->yield( privmsg => $chan => $line );
+        }
 
     }
 
 }
 
 sub addchan {
-   my @prams = @_;
-   my $who = $prams[1];
-   my $nick = $prams[2];
+    my @prams = @_;
+    my $who   = $prams[1];
+    my $nick  = $prams[2];
 
-   my @args = split / /,$prams[0];
+    my @args = split / /, $prams[0];
 
-   my $nacl = acl($nick);
-   my $channel = $args[0];
-   my $owner = $args[1];
+    my $nacl    = acl($nick);
+    my $channel = $args[0];
+    my $owner   = $args[1];
 
-   if (!defined($nacl) || $nacl->{'access'} ne "A") { $irc->yield (notice => $who => "No Access!");  return; }
+    if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
+        $irc->yield( notice => $who => "No Access!" );
+        return;
+    }
 
-   
-   my $query = q{INSERT INTO channel (channame, ownerid) VALUES (?,  (SELECT userid FROM users WHERE username = ?))};
+    my $query = q{INSERT INTO channel (channame, ownerid) VALUES (?,  (SELECT userid FROM users WHERE username = ?))};
 
-   my $sth = $dbh->prepare($query);
-   if($@) {
-      $irc->yield(privmsg => $who => "Error preparing statement: " . $@);
-   } 
-   $sth->bind_param(1, $channel);
-   $sth->bind_param(2, $owner);
+    my $sth = $dbh->prepare($query);
+    if ($@) {
+        $irc->yield( privmsg => $who => "Error preparing statement: " . $@ );
+    }
+    $sth->bind_param( 1, $channel );
+    $sth->bind_param( 2, $owner );
 
+    my $rv = $sth->execute();
 
-   my $rv = $sth->execute();
-   
-   if (!$rv) {
+    if ( !$rv ) {
         $irc->yield( privmsg => $who => "Error adding channel: " . $sth->errstr );
         return;
-   }
-     
-   if($sth->rows > 0)
-   {
-       $irc->yield(privmsg => $who => "Added channel $channel with owner: $owner");
-   }
-   
+    }
+
+    if ( $sth->rows > 0 ) {
+        $irc->yield( privmsg => $who => "Added channel $channel with owner: $owner" );
+    }
+
 }
 
 sub add_chanuser {
-   my @prams = @_;
-   my $who = $prams[1];
-   my $nick = $prams[2];
+    my @prams = @_;
+    my $who   = $prams[1];
+    my $nick  = $prams[2];
 
-   my @args = split / /,$prams[0];
+    my @args = split / /, $prams[0];
 
-   my $nacl = acl($nick);
-   if (!defined($nacl) || $nacl->{'access'} ne "A") { $irc->yield (notice => $who => "No Access!");  return; }
-   
-   my $channel = $args[0];
-   my $user = $args[1];
-   my $access = $args[2];
+    my $nacl = acl($nick);
+    if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
+        $irc->yield( notice => $who => "No Access!" );
+        return;
+    }
 
-   
-   my $query = q{INSERT INTO chanuser (chaccess, userid, chanid) VALUES (?, (SELECT userid FROM users WHERE username = ?), (SELECT chanid FROM channel WHERE channame = ?))};
-   
-   my $sth = $dbh->prepare($query);
-   if (!$sth) {
-     $irc->yield(  privmsg => $who => "Error adding preparing statement to add user to channel: " . $sth->errstr );
-   }
+    my $channel = $args[0];
+    my $user    = $args[1];
+    my $access  = $args[2];
 
-   $sth->bind_param(1, $access);
-   $sth->bind_param(2, $user);
-   $sth->bind_param(3, $channel);
-   my $rv = $sth->execute();
-   if (!$rv) {
+    my $query = q{INSERT INTO chanuser (chaccess, userid, chanid) VALUES (?, (SELECT userid FROM users WHERE username = ?), (SELECT chanid FROM channel WHERE channame = ?))};
+
+    my $sth = $dbh->prepare($query);
+    if ( !$sth ) {
+        $irc->yield( privmsg => $who => "Error adding preparing statement to add user to channel: " . $sth->errstr );
+    }
+
+    $sth->bind_param( 1, $access );
+    $sth->bind_param( 2, $user );
+    $sth->bind_param( 3, $channel );
+    my $rv = $sth->execute();
+    if ( !$rv ) {
         $irc->yield( privmsg => $who => "Error adding user to channel: " . $sth->errstr );
         return;
-   }
-   if($sth->rows > 0)
-   {
-       $irc->yield(privmsg => $who => "Added user to channel");
-   }
-    
+    }
+    if ( $sth->rows > 0 ) {
+        $irc->yield( privmsg => $who => "Added user to channel" );
+    }
+
 }
 
 sub add_user {
 
-   my @prams = @_;
-   my $chan = $prams[1];
-   my $nick = $prams[2];
+    my @prams = @_;
+    my $chan  = $prams[1];
+    my $nick  = $prams[2];
 
-   my @args = split / /,$prams[0];
+    my @args = split / /, $prams[0];
 
-   my $nacl = acl($nick);
+    my $nacl = acl($nick);
 
-   if (!defined($nacl) || $nacl->{'access'} ne "A") { $irc->yield (notice => $nick => "No Access!");  return; }
+    if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
+        $irc->yield( notice => $nick => "No Access!" );
+        return;
+    }
 
-   my $nickname = $args[0];
-   my $hostmask = $args[1];
-   my $acl      = $args[2];
+    my $nickname = $args[0];
+    my $hostmask = $args[1];
+    my $acl      = $args[2];
 
-   if (($nickname eq "") || ($hostmask eq "") || ($acl eq "")) { return; }
+    if ( ( $nickname eq "" ) || ( $hostmask eq "" ) || ( $acl eq "" ) ) {
+        return;
+    }
 
-   $irc->yield ( privmsg => $chan => "Adding user $nickname with a mask of $hostmask and access level $acl in $chan");
+    $irc->yield( privmsg => $chan => "Adding user $nickname with a mask of $hostmask and access level $acl" );
 
-   $dbh->begin_work;
-   #my $query = "INSERT INTO users (username, host, access, channel) values (?, ?, ?, ?);";
+    $dbh->begin_work;
 
-   my $query = q{INSERT INTO users (username, access) VALUES(?, ?)};
+    my $query = q{INSERT INTO users (username, access) VALUES(?, ?)};
 
     my $sth = $dbh->prepare($query);
     if ($@) {
         $irc->yield( privmsg => $chan => "Error preparing insert statement for useradd: " . $@ );
-        $sth->finish; 
+        $sth->finish;
         $dbh->rollback;
         return;
     }
     $sth->bind_param( 1, $nickname );
     $sth->bind_param( 2, $acl );
 
-#    $sth->bind_param( 2, $hostmask );
-#    $sth->bind_param( 3, $acl );
-#    $sth->bind_param( 4, $chan );
-#    DBI::dump_results($sth);
     my $rv = $sth->execute();
-    if (!$rv) {
+    if ( !$rv ) {
         $irc->yield( privmsg => $chan => "Error adding user: " . $sth->errstr );
         $sth->finish;
         $dbh->rollback;
         return;
     }
     $query = q{INSERT INTO usermask (hostmask, userid) VALUES(?, (SELECT(userid) FROM users WHERE username = ?))};
-    $sth = $dbh->prepare($query);
+    $sth   = $dbh->prepare($query);
     if ($@) {
         $irc->yield( privmsg => $chan => "Error preparing insert statement for usermask add: " . $@ );
-        $sth->finish; 
+        $sth->finish;
         $dbh->rollback;
         return;
     }
-    
-    $sth->bind_param(1, $hostmask);
-    $sth->bind_param(2, $nickname);
+
+    $sth->bind_param( 1, $hostmask );
+    $sth->bind_param( 2, $nickname );
     $rv = $sth->execute();
-    
-    if (!$rv) {
+
+    if ( !$rv ) {
         $irc->yield( privmsg => $chan => "Error adding usermask: " . $sth->errstr );
         $sth->finish;
         $dbh->rollback;
         return;
     }
-    $dbh->commit; 
+    $dbh->commit;
     if ( $sth->rows > 0 ) {
-            $irc->yield( privmsg => $chan => "User has been added." );
+        $irc->yield( privmsg => $chan => "User has been added." );
     }
 
 }
 
 sub del_user {
 
-   my @prams = @_;
-   my $nickname = $prams[0];
-   my $chan = $prams[1];
-   my $nick = $prams[2];
+    my @prams    = @_;
+    my $nickname = $prams[0];
+    my $chan     = $prams[1];
+    my $nick     = $prams[2];
 
-   my $acl = acl($nick);
-   if ($acl->{$nick} ne "A") { return; }
+    my $acl = acl($nick);
+    if ( $acl->{$nick} ne "A" ) { return; }
 
-   if ($nickname eq "") { return; }
+    if ( $nickname eq "" ) { return; }
 
-   my $query = q{DELETE FROM users where username = ?};
+    my $query = q{DELETE FROM users where username = ?};
 
-   my $sth = $dbh->prepare($query);
-   if ($@) {
+    my $sth = $dbh->prepare($query);
+    if ($@) {
         $irc->yield( privmsg => $chan => "Error inserting user: " . $@ );
         return;
-   }
-   $sth->bind_param( 1, $nickname );
+    }
+    $sth->bind_param( 1, $nickname );
+
     #DBI::dump_results($sth);
     my $rv = $sth->execute();
-    if (!$rv) {
+    if ( !$rv ) {
         $irc->yield( privmsg => $chan => "Error deleting user: " . $sth->err );
     }
     else {
@@ -816,106 +849,112 @@ sub del_user {
 }
 
 sub chan_acl {
-   my @prams = @_;
-   
-   my $nickname = $prams[0];
-   my $chan = $prams[1];
-   
-   my $var = $irc->nick_info($nickname);
-   my $host = $nickname . "!" . $var->{'Userhost'};
-   my %access;   
-   
-   my $query = q{SELECT username, hostmask, chaccess from users, usermask, channel, chanuser WHERE ? GLOB usermask.hostmask AND users.userid = usermask.userid AND chanuser.chanid = channel.chanid AND channame = ?};
+    my @prams = @_;
 
-   
-   my $sth = $dbh->prepare($query);
-   #DBI::dump_results($sth);
-   
-   $sth->bind_param(1, $host);
-   $sth->bind_param(2, $chan);
-   $sth->execute() || die("Unable to execute $@");
+    my $nickname = $prams[0];
+    my $chan     = $prams[1];
 
-   if( defined( my $res = $sth->fetchrow_hashref ) ) {
-     if(matches_mask($res->{'hostmask'},$host)) { 
-        $access{'hostmask'} =  $res->{'hostmask'};
-        $access{'username'} = $res->{'username'};
-        $access{'access'} = $res->{'chaccess'};
-        #print Dumper(\%access);
-        return \%access;
-     }
+    my $var  = $irc->nick_info($nickname);
+    my $host = $nickname . "!" . $var->{'Userhost'};
+    my %access;
 
-   }
-   return undef;
+    my $query =
+q{SELECT username, hostmask, chaccess from users, usermask, channel, chanuser WHERE ? GLOB usermask.hostmask AND users.userid = usermask.userid AND chanuser.chanid = channel.chanid AND channame = ?};
+
+    my $sth = $dbh->prepare($query);
+
+    #DBI::dump_results($sth);
+
+    $sth->bind_param( 1, $host );
+    $sth->bind_param( 2, $chan );
+    $sth->execute() || die("Unable to execute $@");
+
+    if ( defined( my $res = $sth->fetchrow_hashref ) ) {
+        if ( matches_mask( $res->{'hostmask'}, $host ) ) {
+            $access{'hostmask'} = $res->{'hostmask'};
+            $access{'username'} = $res->{'username'};
+            $access{'access'}   = $res->{'chaccess'};
+
+            #print Dumper(\%access);
+            return \%access;
+        }
+
+    }
+    return undef;
 }
 
 sub acl {
 
-   my @prams = @_;
-   my $nickname = $prams[0];
-   my $chan = $prams[1];
-   my $nick = $prams[2];
-   my $sth;
-   my $hostmask;
-   my $tnick;
-   my %access;
+    my @prams    = @_;
+    my $nickname = $prams[0];
+    my $chan     = $prams[1];
+    my $nick     = $prams[2];
+    my $sth;
+    my $hostmask;
+    my $tnick;
+    my %access;
 
-   my $var = $irc->nick_info("$nickname"); 
+    my $var = $irc->nick_info("$nickname");
 
-   my $host = $nickname . "!" . $var->{'Userhost'};
+    my $host = $nickname . "!" . $var->{'Userhost'};
 
-   my $query	= q{SELECT users.username AS username, usermask.hostmask AS hostmask, users.access AS access FROM users,usermask WHERE usermask.userid == users.userid AND  ? GLOB usermask.hostmask};
-   
-   $sth = $dbh->prepare($query);
-   #DBI::dump_results($sth);
-   
-   $sth->bind_param(1, $host);
-   $sth->execute() || die("Unable to execute $@");
+    my $query = q{SELECT users.username AS username, usermask.hostmask AS hostmask, users.access AS access FROM users,usermask WHERE usermask.userid == users.userid AND  ? GLOB usermask.hostmask};
 
-   if( defined( my $res = $sth->fetchrow_hashref ) ) {
-     if(matches_mask($res->{'hostmask'},$host)) { 
-        $access{'hostmask'} =  $res->{'hostmask'};
-        $access{'username'} = $res->{'username'};
-        $access{'access'} = $res->{'access'};
-        #print Dumper(\%access);
+    $sth = $dbh->prepare($query);
+
+    #DBI::dump_results($sth);
+
+    $sth->bind_param( 1, $host );
+    $sth->execute() || die("Unable to execute $@");
+
+    if ( defined( my $res = $sth->fetchrow_hashref ) ) {
+        if ( matches_mask( $res->{'hostmask'}, $host ) ) {
+            $access{'hostmask'} = $res->{'hostmask'};
+            $access{'username'} = $res->{'username'};
+            $access{'access'}   = $res->{'access'};
+
+            #print Dumper(\%access);
+            return \%access;
+        }
+
+    }
+
+    if ( matches_mask( $master, $host ) ) {
+        $access{'hostmask'} = $master;
+        $access{'username'} = 'master user';
+        $access{'access'}   = 'A';
         return \%access;
-     }
+    }
 
-   }
+    return undef;
 
-   if(matches_mask($master, $host))
-   {
-      $access{'hostmask'} = $master;
-      $access{'username'} = 'master user';
-      $access{'access'} = 'A';
-      return \%access;
-   }
-
-
-   return undef;
-  
 }
 
 sub check_user {
 
-   my @prams = @_;
-   my $nickname = $prams[0];
-   my $who = $prams[1];
-   my $nick = $prams[2];
-#   print Dumper($acl);
-   
-   my $nacl = acl($who);
-   
-   if(!defined($nacl) || ($nacl->{'access'} !~ 'O|A'))  { $irc->yield (notice => $who => "No Access!");  return; } 
-    
-   my $acl = acl($nickname);
+    my @prams    = @_;
+    my $nickname = $prams[0];
+    my $who      = $prams[1];
+    my $nick     = $prams[2];
 
-   if (!defined($acl)) {
+    #   print Dumper($acl);
 
-      $irc->yield( privmsg => $who => "No such user." );
-      return;
+    my $nacl = acl($who);
 
-   }
-   
-   $irc->yield( privmsg => $who => "User access level for user: " . $acl->{'username'} . " "  . $acl->{'hostmask'} . " " . $acl->{'access'} );
+    if ( !defined($nacl) || ( $nacl->{'access'} !~ 'O|A' ) ) {
+        $irc->yield( notice => $who => "No Access!" );
+        return;
+    }
+
+    my $acl = acl($nickname);
+
+    if ( !defined($acl) ) {
+
+        $irc->yield( privmsg => $who => "No such user." );
+        return;
+
+    }
+
+    $irc->yield( privmsg => $who => "User access level for user: " . $acl->{'username'} . " " . $acl->{'hostmask'} . " " . $acl->{'access'} );
 
 }
