@@ -98,6 +98,9 @@ $pmsg_cmd_hash{"adduser"}   = sub { add_user(@_); };
 $pmsg_cmd_hash{"deluser"}   = sub { del_user(@_); };
 $pmsg_cmd_hash{"checkuser"} = sub { check_user(@_); };
 
+$pmsg_cmd_chan{"addchan"    = sub { addchan(@_); };
+$pmsg_cmd_chan{"add_chanuser"    = sub { add_chanuser(@_); };
+
 
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_msg irc_ctcp_version irc_join)], ],
@@ -629,6 +632,69 @@ sub nhl_standings {
 
 }
 
+sub add_chan {
+   my @prams = @_;
+   my $who = $prams[1];
+   my $nick = $prams[2];
+
+   my @args = split / /,$prams[0];
+
+   my $nacl = acl($nick);
+   my $channel = $args[0];
+   my $owner = $args[1];
+
+   if (!defined($nacl) || $nacl->{'access'} ne "A") { $irc->yield (notice => $who => "No Access!");  return; }
+   
+   my $query = q{INSERT INTO channel (channame, ownerid) (?,  (SELECT userid FROM users WHERE username = ?))};
+   
+   my $sth = $dbh->prepare($query);
+   if($@) {
+      $irc->yield(privmsg, $who, "Error preparing statement: " . $@);
+   } 
+   $sth->bind_param(1, $channel);
+   $sth->bind_param(2, $owner);
+ 
+   $sth->execute();
+   if ($@) {
+        $irc->yield( privmsg => $who => "Error adding channel: " . $sth->err );
+        return;
+   }
+     
+   if($sth->rows > 0)
+   {
+       $irc->yield(privmsg, $who => "Added channel $channel with owner: $owner");
+   }
+   
+}
+
+sub add_chanuser {
+   my @prams = @_;
+   my $who = $prams[1];
+   my $nick = $prams[2];
+
+   my @args = split / /,$prams[0];
+
+   my $nacl = acl($nick);
+   if (!defined($nacl) || $nacl->{'access'} ne "A") { $irc->yield (notice => $who => "No Access!");  return; }
+   
+   my $channel = $args[0];
+   my $user = $args[1];
+   my $access = $args[2];
+
+   
+   my $query = q{INSERT INTO chanuser (chaccess, userid, chanid) VALUES (?, (SELECT userid FROM users WHERE username = ?), SELECT chanid FROM channel WHERE channame = ?)};
+   $sth->bind_param(1, $access);
+   $sth->bind_param(2, $user);
+   $sth->bind_param(3, $channel);
+   $sth->execute();
+   if ($@) {
+        $irc->yield( privmsg => $who => "Error adding user to channel: " . $sth->err );
+        $sth->finish;
+        $dbh->rollback;
+        return;
+   }
+}
+
 sub add_user {
 
    my @prams = @_;
@@ -783,7 +849,7 @@ sub check_user {
    
    my $nacl = acl($who);
    
-   if(!defined($nacl) || ($nacl->{'access'} !~ 'O|A'))  { $irc->yield (notice => $nick => "No Access!");  return; } 
+   if(!defined($nacl) || ($nacl->{'access'} !~ 'O|A'))  { $irc->yield (notice => $who => "No Access!");  return; } 
     
    my $acl = acl($nickname);
 
