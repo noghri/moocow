@@ -726,7 +726,7 @@ sub add_user {
 
    if (($nickname eq "") || ($hostmask eq "") || ($acl eq "")) { return; }
 
-   $irc->yield ( privmsg => $chan => "Adding user $nickname with a mask of $hostmask and access level $acl in $chan");
+   $irc->yield ( privmsg => $chan => "Adding user $nickname with a mask of $hostmask and access level $acl");
 
    $dbh->begin_work;
    #my $query = "INSERT INTO users (username, host, access, channel) values (?, ?, ?, ?);";
