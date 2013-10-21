@@ -1,5 +1,10 @@
 #!/bin/sh
 
+if [ -z $1 ]; then
+    echo "Please pass the filename where the database will be stored"
+    exit 1
+fi
+
 if [ -f $1 ]; then
 	echo "File $1 exists, do you which to overwrite? Y/N"
 	read YN 
