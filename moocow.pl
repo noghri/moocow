@@ -141,9 +141,9 @@ sub irc_join {
     my $acl = acl($nick);
 
     if (($acl->{'access'} eq "A") || ($acl->{'access'} eq "O")) {
-
         $irc->yield( mode => $channel => "+o $nick" );
-   
+    } elsif ($acl->{'access'} eq "V") {
+        $irc->yield( mode => $channel => "+v $nick" );
     }
 
     return;
