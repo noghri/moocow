@@ -104,7 +104,7 @@ $pmsg_cmd_hash{"add_chanuser"}    = sub { add_chanuser(@_); };
 
 
 POE::Session->create(
-    package_states => [ main => [qw(_default _start irc_001 irc_public irc_msg irc_ctcp_version irc_join)], ],
+    package_states => [ main => [qw(_default _start irc_001 irc_public irc_msg irc_ctcp_version irc_nick_sync)], ],
     inline_states  => { },
     heap => { irc => $irc },
 );
@@ -142,11 +142,11 @@ sub irc_001 {
     return;
 }
 
-sub irc_join {
+sub irc_nick_sync {
 
     my ( $umask, $channel) = @_ [ ARG0, ARG1 ];
     my $nick = ( split /!/, $umask )[0];
-    my $acl = acl($nick);
+    my $acl = chan_acl($nick, $channel);
     return if(!defined($acl));
      
     if (($acl->{'access'} eq "A") || ($acl->{'access'} eq "O")) {
@@ -689,20 +689,23 @@ sub add_chanuser {
    my $query = q{INSERT INTO chanuser (chaccess, userid, chanid) VALUES (?, (SELECT userid FROM users WHERE username = ?), (SELECT chanid FROM channel WHERE channame = ?))};
    
    my $sth = $dbh->prepare($query);
-   if ($@) {
-     $irc->yield(  privmsg => $who => "Error adding preparing statement to add user to channel: " . $@ );
+   if (!$sth) {
+     $irc->yield(  privmsg => $who => "Error adding preparing statement to add user to channel: " . $sth->errstr );
    }
- 
+
    $sth->bind_param(1, $access);
    $sth->bind_param(2, $user);
    $sth->bind_param(3, $channel);
    my $rv = $sth->execute();
    if (!$rv) {
         $irc->yield( privmsg => $who => "Error adding user to channel: " . $sth->errstr );
-        $sth->finish;
-        $dbh->rollback;
         return;
    }
+   if($sth->rows > 0)
+   {
+       $irc->yield(privmsg => $who => "Added user to channel");
+   }
+    
 }
 
 sub add_user {
@@ -810,6 +813,39 @@ sub del_user {
 
 }
 
+sub chan_acl {
+   my @prams = @_;
+   
+   my $nickname = $prams[0];
+   my $chan = $prams[1];
+   
+   my $var = $irc->nick_info($nickname);
+   my $host = $nickname . "!" . $var->{'Userhost'};
+   my %access;   
+   
+   my $query = q{SELECT username, hostmask, chaccess from users, usermask, channel, chanuser WHERE ? GLOB usermask.hostmask AND users.userid = usermask.userid AND chanuser.chanid = channel.chanid AND channame = ?};
+
+   
+   my $sth = $dbh->prepare($query);
+   #DBI::dump_results($sth);
+   
+   $sth->bind_param(1, $host);
+   $sth->bind_param(2, $chan);
+   $sth->execute() || die("Unable to execute $@");
+
+   if( defined( my $res = $sth->fetchrow_hashref ) ) {
+     if(matches_mask($res->{'hostmask'},$host)) { 
+        $access{'hostmask'} =  $res->{'hostmask'};
+        $access{'username'} = $res->{'username'};
+        $access{'access'} = $res->{'chaccess'};
+        #print Dumper(\%access);
+        return \%access;
+     }
+
+   }
+   return undef;
+}
+
 sub acl {
 
    my @prams = @_;
@@ -823,19 +859,9 @@ sub acl {
 
    my $var = $irc->nick_info("$nickname"); 
 
-   my $host = $var->{'Userhost'};
+   my $host = $nickname . "!" . $var->{'Userhost'};
 
-   $host = "$nickname!" . $host;
-
-   if(matches_mask($master, $host))
-   {
-      $access{'hostmask'} = $master;
-      $access{'username'} = 'master user';
-      $access{'access'} = 'A';
-      return \%access;
-   }
-
-   my $query	= q{SELECT users.username AS username, usermask.hostmask AS hostmask, users.access AS access FROM users,usermask WHERE ? GLOB usermask.hostmask};
+   my $query	= q{SELECT users.username AS username, usermask.hostmask AS hostmask, users.access AS access FROM users,usermask WHERE usermask.userid == users.userid AND  ? GLOB usermask.hostmask};
    
    $sth = $dbh->prepare($query);
    #DBI::dump_results($sth);
@@ -853,6 +879,16 @@ sub acl {
      }
 
    }
+
+   if(matches_mask($master, $host))
+   {
+      $access{'hostmask'} = $master;
+      $access{'username'} = 'master user';
+      $access{'access'} = 'A';
+      return \%access;
+   }
+
+
    return undef;
   
 }
