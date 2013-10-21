@@ -620,26 +620,55 @@ sub add_user {
 
    $irc->yield ( privmsg => $chan => "Adding user $nickname with a mask of $hostmask and access level $acl in $chan");
 
-   my $query = "INSERT INTO users (username, host, access, channel) values (?, ?, ?, ?);";
+   $dbh->begin_work;
+   #my $query = "INSERT INTO users (username, host, access, channel) values (?, ?, ?, ?);";
+
+   my $query = q{INSERT INTO users (username, access) VALUES(?, ?)};
 
     my $sth = $dbh->prepare($query);
     if ($@) {
-        $irc->yield( privmsg => $chan => "Error inserting user: " . $@ );
+        $irc->yield( privmsg => $chan => "Error preparing insert statement for useradd: " . $@ );
+        $sth->finish; 
+        $dbh->rollback;
         return;
     }
     $sth->bind_param( 1, $nickname );
-    $sth->bind_param( 2, $hostmask );
-    $sth->bind_param( 3, $acl );
-    $sth->bind_param( 4, $chan );
-    DBI::dump_results($sth);
+    $sth->bind_param( 2, $acl );
+
+
+#    $sth->bind_param( 2, $hostmask );
+#    $sth->bind_param( 3, $acl );
+#    $sth->bind_param( 4, $chan );
+#    DBI::dump_results($sth);
     $sth->execute();
     if ($@) {
         $irc->yield( privmsg => $chan => "Error adding user: " . $sth->err );
+        $sth->finish;
+        $dbh->rollback;
+        return;
     }
-    else {
-        if ( $sth->rows > 0 ) {
+    $query = q{INSERT INTO usermask (hostmask, userid) VALUES(?, (SELECT(userid) FROM users WHERE username = ?)))};
+    $sth = $dbh->prepare($query);
+    if ($@) {
+        $irc->yield( privmsg => $chan => "Error preparing insert statement for usermask add: " . $@ );
+        $sth->finish; 
+        $dbh->rollback;
+        return;
+    }
+    
+    $sth->bind_param(1, $hostmask);
+    $sth->bind_param(2, $nickname);
+    $sth->execute();
+    
+    if ($@) {
+        $irc->yield( privmsg => $chan => "Error adding usermask: " . $sth->err );
+        $sth->finish;
+        $dbh->rollback;
+        return;
+    }
+
+    if ( $sth->rows > 0 ) {
             $irc->yield( privmsg => $chan => "User has been added." );
-        }
     }
 
 }
@@ -685,7 +714,7 @@ sub acl {
    my $sth;
    my $hostmask;
    my $tnick;
-   my $access;
+   my %access;
 
    my $var = $irc->nick_info("$nickname"); 
 
@@ -693,28 +722,29 @@ sub acl {
 
    $host = "$nickname!" . $host;
 
-   my $query    = q{SELECT username,access,host from users};
-
+   my $query	= q{SELECT users.username AS username, usermask.hostmask AS hostmask, users.access AS access FROM users,usermask WHERE ? GLOB usermask.hostmask};
+   
    $sth = $dbh->prepare($query);
+   DBI::dump_results($sth);
+   
+   $sth->bind_param(1, $host);
    $sth->execute() || die("Unable to execute $@");
-
-   while ( defined( my $res = $sth->fetchrow_hashref ) ) {
-
-     if(matches_mask($res->{'host'},$host)) { 
-
-        $hostmask = $res->{'host'};
-        $tnick = $res->{'username'};
-        $access = $res->{'access'};
-
+#   DBI::dump_results($sth);
+   print Dumper($sth);
+   print "Here $host \n";
+   if( defined( my $res = $sth->fetchrow_hashref ) ) {
+     print "Now " . $res->{'hostmask'} . "\n";
+     print Dumper($res);
+     if(matches_mask($res->{'hostmask'},$host)) { 
+        $access{'hostmask'} =  $res->{'hostmask'};
+        $access{'username'} = $res->{'username'};
+        $access{'access'} = $res->{'access'};
+        print Dumper(\%access);
+        return \%access;
      }
 
    }
- 
-   if(defined($access)) { 
-      return $access;
-   } else {
-      return undef;
-   }
+   return undef;
   
 }
 
@@ -726,14 +756,14 @@ sub check_user {
    my $nick = $prams[2];
 
    my $acl = acl($nickname);
-
+#   print Dumper($acl);
    if (!defined($acl)) {
 
       $irc->yield( privmsg => $chan => "No such user." );
       return;
 
    }
-
-   $irc->yield( privmsg => $chan => "User access level: $acl");
+   
+   $irc->yield( privmsg => $chan => "User access level for user: " . $acl->{'username'} . " "  . $acl->{'hostmask'} . " " . $acl->{'access'} );
 
 }
