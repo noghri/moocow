@@ -604,6 +604,8 @@ sub nhl_standings {
 
     $division = lc($division);
 
+    if (($division ne "atlantic")&&($division ne "pacific")&&($division ne "central")&&($division ne "metropolitan")) {return;}
+
     my $url = "http://www.nhl.com/ice/m_standings.htm?type=DIV";
 
     my $ua = LWP::UserAgent::WithCache->new({'namespace' => 'moocowlwp_cache', 'default_expires_in' => 3600} );
