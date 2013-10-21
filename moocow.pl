@@ -139,7 +139,8 @@ sub irc_join {
     my ( $umask, $channel) = @_ [ ARG0, ARG1 ];
     my $nick = ( split /!/, $umask )[0];
     my $acl = acl($nick);
-
+    return if(!defined($acl));
+     
     if (($acl->{'access'} eq "A") || ($acl->{'access'} eq "O")) {
         $irc->yield( mode => $channel => "+o $nick" );
     } elsif ($acl->{'access'} eq "V") {
@@ -616,7 +617,9 @@ sub add_user {
 
    my @args = split / /,$prams[0];
 
-   if (acl($nick) ne "A") { return; }
+   my $nacl = acl($nick);
+
+   if (!defined($nacl) || $nacl->{'access'} ne "A") { $irc->yield (notice => $nick => "No Access!");  return; }
 
    my $nickname = $args[0];
    my $hostmask = $args[1];
@@ -640,7 +643,7 @@ sub add_user {
     }
     $sth->bind_param( 1, $nickname );
     $sth->bind_param( 2, $acl );
-
+    print "Here\n";
 
 #    $sth->bind_param( 2, $hostmask );
 #    $sth->bind_param( 3, $acl );
@@ -653,7 +656,7 @@ sub add_user {
         $dbh->rollback;
         return;
     }
-    $query = q{INSERT INTO usermask (hostmask, userid) VALUES(?, (SELECT(userid) FROM users WHERE username = ?)))};
+    $query = q{INSERT INTO usermask (hostmask, userid) VALUES(?, (SELECT(userid) FROM users WHERE username = ?))};
     $sth = $dbh->prepare($query);
     if ($@) {
         $irc->yield( privmsg => $chan => "Error preparing insert statement for usermask add: " . $@ );
@@ -686,7 +689,8 @@ sub del_user {
    my $chan = $prams[1];
    my $nick = $prams[2];
 
-   if (acl($nick) ne "A") { return; }
+   my $acl = acl($nick);
+   if ($acl->{$nick} ne "A") { return; }
 
    if ($nickname eq "") { return; }
 
