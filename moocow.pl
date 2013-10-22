@@ -117,6 +117,7 @@ $pmsg_cmd_hash{"addchan"}      = sub { addchan(@_); };
 $pmsg_cmd_hash{"add_chanuser"} = sub { add_chanuser(@_); };
 
 $pmsg_cmd_hash{"moduser"} = sub { mod_user(@_); };
+$pmsg_cmd_hash{"listusers"} = sub { list_users(@_); };
 
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_msg irc_ctcp_version irc_nick_sync)], ],
@@ -1029,3 +1030,33 @@ sub mod_user {
 
 }
 
+sub list_users {
+
+    my @prams = @_;
+    my $chan  = $prams[1];
+    my $nick  = $prams[2];
+
+    my @args = split / /, $prams[0];
+
+    my $nacl = acl($nick);
+
+    if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
+        $irc->yield( notice => $nick => "No Access!" );
+        return;
+    }
+
+    my $query = q{SELECT username,access,userid from users};
+    my $sth = $dbh->prepare($query);
+    my $rv = $sth->execute();
+
+    while ( defined( my $res = $sth->fetchrow_hashref ) ) {
+
+        my $uname = $res->{'username'};
+        my $access = $res->{'access'};
+        my $userid = $res->{'userid'};
+        $irc->yield( privmsg => $nick => "Username: $uname Access: $access UserID: $userid" );
+
+    }
+
+
+}
