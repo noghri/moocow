@@ -182,10 +182,8 @@ sub irc_nick_sync {
     if ($banexpire > 0) {
 
         my $banlist = $irc->channel_ban_list($channel);
-        print Dumper($banlist); 
         foreach my $q (keys($banlist))
         {
-            print "-$q- -$banlist->{$q}->{'SetAt'}-\n";
             my $tm = time();
             my $bantime = $tm - $banlist->{$q}->{'SetAt'};
             if($bantime > $banexpire) {
