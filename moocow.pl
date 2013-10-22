@@ -32,7 +32,7 @@ parseconfig($confpath);
 my $nickname = readconfig('nickname');
 my $ircname  = readconfig('ircname');
 my $server   = readconfig('server');
-my $channels = readconfig('channels');
+#my $channels = readconfig('channels');
 my $trigger  = readconfig('trigger');
 my $dbpath   = readconfig('dbpath');
 my $autourl  = readconfig('autourl');
@@ -58,11 +58,11 @@ else {
 
 my %chans;
 
-foreach my $c ( split( ',', $channels ) ) {
-    my ( $chan, $key ) = split( / /, $c );
-    $key = "" if ( !defined($key) );
-    $chans{$chan} = $key;
-}
+#foreach my $c ( split( ',', $channels ) ) {
+#    my ( $chan, $key ) = split( / /, $c );
+#    $key = "" if ( !defined($key) );
+#    $chans{$chan} = $key;
+#}
 
 my $q = q{SELECT channame, chankey FROM channel};
 
