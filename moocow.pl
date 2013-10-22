@@ -257,15 +257,16 @@ sub irc_public {
         $word_s         = "";
         $word_on        = 0;
     }
-    if ( $what =~ m/^hack/i ) {
-        hack();
-    }
+
+    # these techenically will catch the !tu !u2 urls, but the end result is the same for autourl
     if ($autourl) {
-        if ( my ($youtube) = $what =~ /^(https?:\/\/(www\.youtube\.com|youtube\.com|youtu\.be)\/.*)/ ) {
+        if ( my ($youtube) = $what =~ /(https?:\/\/(www\.youtube\.com|youtube\.com|youtu\.be)\/.*)/ ) {
             youtube( $youtube, $channel, $nick, $who );
+            return;
         }
-        elsif ( my ($gogl) = $what =~ /^(https?:\/\/.*)/ ) {
+        elsif ( my ($gogl) = $what =~ /(https?:\/\/.*)/ ) {
             gogl( $gogl, $channel, $nick, $who );
+            return;
         }
     }
 
