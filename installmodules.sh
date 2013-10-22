@@ -11,7 +11,7 @@ BASEMODULES=(${BASEMODULES})
 
 for var in "${MODULES[@]}"
 do
-    echo "cpanm --sudo ${var//;/}"
+    cpanm --sudo ${var//;/}
 done
 
 CURBASE=""
@@ -25,9 +25,9 @@ do
     if [  "${var}" ]; then
        if ! grep -q "::" <<<${var}; then
            CURBASE=${var}
-           echo "cpanm --sudo ${var}"
+           cpanm --sudo ${var}
        else
-          echo "cpanm --sudo $CURBASE::${var}"
+           cpanm --sudo $CURBASE::${var}
        fi
     fi
 done
