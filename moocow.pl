@@ -175,6 +175,7 @@ sub irc_nick_sync {
     my ( $umask, $channel ) = @_[ ARG0, ARG1 ];
     my $nick = ( split /!/, $umask )[0];
     my $acl = chan_acl( $nick, $channel );
+    my $uacl = acl($nick);
     return if ( !defined($acl) );
 
     if ( ( $acl->{'access'} eq "A" ) || ( $acl->{'access'} eq "O" ) ) {
@@ -182,6 +183,10 @@ sub irc_nick_sync {
     }
     elsif ( $acl->{'access'} eq "V" ) {
         $irc->yield( mode => $channel => "+v $nick" );
+    }
+    elsif ( $acl->{'access'} eq "B" ) {
+        $irc->yield( mode => $channel => "+b $uacl->{'hostmask'}" );
+        $irc->yield( kick => $channel => "*doink*" );
     }
 
     return;
