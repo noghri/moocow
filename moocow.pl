@@ -116,6 +116,8 @@ $pmsg_cmd_hash{"checkuser"} = sub { check_user(@_); };
 $pmsg_cmd_hash{"addchan"}      = sub { addchan(@_); };
 $pmsg_cmd_hash{"add_chanuser"} = sub { add_chanuser(@_); };
 
+$pmsg_cmd_hash{"moduser"} = sub { mod_user(@_); };
+
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_msg irc_ctcp_version irc_nick_sync)], ],
     inline_states  => {},
@@ -974,3 +976,56 @@ sub check_user {
     $irc->yield( privmsg => $who => "User access level for user: " . $acl->{'username'} . " " . $acl->{'hostmask'} . " " . $acl->{'access'} );
 
 }
+
+sub mod_user {
+
+    my @prams = @_;
+    my $chan  = $prams[1];
+    my $nick  = $prams[2];
+
+    my @args = split / /, $prams[0];
+
+    my $nacl = acl($nick);
+
+    if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
+        $irc->yield( notice => $nick => "No Access!" );
+        return;
+    }
+
+    my $nickname = $args[0];
+    my $acl      = $args[1];
+
+    if ( ( $nickname eq "" ) || ( $acl eq "" ) ) {
+        return;
+    }
+
+    $irc->yield( privmsg => $chan => "Modifying user $nickname with access level $acl" );
+
+    $dbh->begin_work;
+
+    my $query = q{UPDATE users set access = ? where username = ?};
+
+    my $sth = $dbh->prepare($query);
+    if ($@) {
+        $irc->yield( privmsg => $chan => "Error preparing update statement for useradd: " . $@ );
+        $sth->finish;
+        $dbh->rollback;
+        return;
+    }
+    $sth->bind_param( 1, $acl );
+    $sth->bind_param( 2, $nickname );
+
+    my $rv = $sth->execute();
+    if ( !$rv ) {
+        $irc->yield( privmsg => $chan => "Error adding user: " . $sth->errstr );
+        $sth->finish;
+        $dbh->rollback;
+        return;
+    }
+    $dbh->commit;
+    if ( $sth->rows > 0 ) {
+        $irc->yield( privmsg => $chan => "User has been modified." );
+    }
+
+}
+
