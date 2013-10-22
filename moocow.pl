@@ -659,18 +659,18 @@ sub help {
     my $chan  = $prams[1];
     my $nick  = $prams[2];
 
-    $irc->yield( privmsg => $nick => "!tu <url>: Shorten a url" );
-    $irc->yield( privmsg => $nick => "!u2 <url>: youtube info" );
-    $irc->yield( privmsg => $nick => "!flip: coin flip" );
-    $irc->yield( privmsg => $nick => "!wz <zip>: Weather for zip" );
-    $irc->yield( privmsg => $nick => "!wzd <zip>: Adds default weather zip." );
-    $irc->yield( privmsg => $nick => "!entertain: Massive entertainment." );
-    $irc->yield( privmsg => $nick => "!codeword <codeword>: Special codeword actions." );
-    $irc->yield( privmsg => $nick => "!quote: Display random quote" );
-    $irc->yield( privmsg => $nick => "!addquote <quote>: add a new quote" );
-    $irc->yield( privmsg => $nick => "!nhl: nhl standings" );
-    $irc->yield( privmsg => $nick => "!word: word scramble game" );
-    $irc->yield( privmsg => $nick => "!moo: moo." );
+    $irc->yield( notice => $nick => "!tu <url>: Shorten a url" );
+    $irc->yield( notice => $nick => "!u2 <url>: youtube info" );
+    $irc->yield( notice => $nick => "!flip: coin flip" );
+    $irc->yield( notice => $nick => "!wz <zip>: Weather for zip" );
+    $irc->yield( notice => $nick => "!wzd <zip>: Adds default weather zip." );
+    $irc->yield( notice => $nick => "!entertain: Massive entertainment." );
+    $irc->yield( notice => $nick => "!codeword <codeword>: Special codeword actions." );
+    $irc->yield( notice => $nick => "!quote: Display random quote" );
+    $irc->yield( notice => $nick => "!addquote <quote>: add a new quote" );
+    $irc->yield( notice => $nick => "!nhl: nhl standings" );
+    $irc->yield( notice => $nick => "!word: word scramble game" );
+    $irc->yield( notice => $nick => "!moo: moo." );
 
     my $nacl = acl($nick);
 
@@ -678,16 +678,16 @@ sub help {
         return;
     }
 
-    $irc->yield( privmsg => $nick => "Admin Commands: (all privmsg)" );
-    $irc->yield( privmsg => $nick => "!adduser <nickname> <hostmask> <acl>" );
-    $irc->yield( privmsg => $nick => "!deluser <nickname>" );
-    $irc->yield( privmsg => $nick => "!moduser <nickname> <acl>" );
-    $irc->yield( privmsg => $nick => "!add_chanuser <channel> <nickname> <acl>" );
-    $irc->yield( privmsg => $nick => "!checkuser <ircname>" );
-    $irc->yield( privmsg => $nick => "!addchan <channel>" );
-    $irc->yield( privmsg => $nick => "!listusers" );
-    $irc->yield( privmsg => $nick => "!mod_chanuser <channel> <nickname> <acl>" );
-    $irc->yield( privmsg => $nick => "!list_chanuser <channel>" );
+    $irc->yield( notice => $nick => "Admin Commands: (all privmsg)" );
+    $irc->yield( notice => $nick => "!adduser <nickname> <hostmask> <acl>" );
+    $irc->yield( notice => $nick => "!deluser <nickname>" );
+    $irc->yield( notice => $nick => "!moduser <nickname> <acl>" );
+    $irc->yield( notice => $nick => "!add_chanuser <channel> <nickname> <acl>" );
+    $irc->yield( notice => $nick => "!checkuser <ircname>" );
+    $irc->yield( notice => $nick => "!addchan <channel>" );
+    $irc->yield( notice => $nick => "!listusers" );
+    $irc->yield( notice => $nick => "!mod_chanuser <channel> <nickname> <acl>" );
+    $irc->yield( notice => $nick => "!list_chanuser <channel>" );
   
 }
 
