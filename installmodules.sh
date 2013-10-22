@@ -20,7 +20,7 @@ do
     var="${var//use/}"
     var="${var//qw(/}"
     var="${var//)/}"
-    var="${var//\n/}"
+    var="${var//;/}"
     IFS=' ' read -a newarr <<< "${var}"
     if [  "${var}" ]; then
        if ! grep -q "::" <<<${var}; then
