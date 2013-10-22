@@ -29,13 +29,14 @@ if ( exists( $opts{f} ) ) {
 
 parseconfig($confpath);
 
-my $nickname = readconfig('nickname');
-my $ircname  = readconfig('ircname');
-my $server   = readconfig('server');
-my $trigger  = readconfig('trigger');
-my $dbpath   = readconfig('dbpath');
-my $autourl  = readconfig('autourl');
-my $master   = readconfig('master');
+my $nickname  = readconfig('nickname');
+my $ircname   = readconfig('ircname');
+my $server    = readconfig('server');
+my $trigger   = readconfig('trigger');
+my $dbpath    = readconfig('dbpath');
+my $autourl   = readconfig('autourl');
+my $master    = readconfig('master');
+my $banexpire = readconfig('banexpire');
 
 # for WORD game
 my $word_on  = 0;     # !word game
@@ -174,8 +175,20 @@ sub irc_nick_sync {
 
     my ( $umask, $channel ) = @_[ ARG0, ARG1 ];
     my $nick = ( split /!/, $umask )[0];
+
     my $acl = chan_acl( $nick, $channel );
     my $uacl = acl($nick);
+
+    my $banlist = $irc->channel_ban_list($channel);
+
+    print Dumper($banlist); 
+
+    for (keys $banlist) {
+
+        print "$banlist->{'SetAt'}";
+
+    }
+
     return if ( !defined($acl) );
 
     if ( ( $acl->{'access'} eq "A" ) || ( $acl->{'access'} eq "O" ) ) {
