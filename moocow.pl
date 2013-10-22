@@ -124,7 +124,7 @@ $pmsg_cmd_hash{"list_chanuser"} = sub { list_chanuser(@_); };
 
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_msg irc_ctcp_version irc_nick_sync)], ],
-    inline_states  => {},
+    inline_states  => { },
     heap           => { irc  => $irc },
 );
 
@@ -176,8 +176,9 @@ sub ban_expire {
 
     my ( $umask, $channel ) = @_[ ARG0, ARG1 ];
 
-    if ($banexpire > 0) {
+print "Expiring bans...\n";
 
+    if ($banexpire > 0) {
         my $banlist = $irc->channel_ban_list($channel);
         foreach my $q (keys($banlist))
         {
@@ -189,6 +190,9 @@ sub ban_expire {
         }
 
     }
+
+
+    return;
 
 }
 
