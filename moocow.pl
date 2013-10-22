@@ -186,7 +186,7 @@ sub irc_nick_sync {
     }
     elsif ( $acl->{'access'} eq "B" ) {
         $irc->yield( mode => $channel => "+b $uacl->{'hostmask'}" );
-        $irc->yield( kick => $channel => "*doink*" );
+        $irc->yield( kick => $channel => "$nick" );
     }
 
     return;
@@ -893,8 +893,12 @@ sub del_user {
     my $chan     = $prams[1];
     my $nick     = $prams[2];
 
-    my $acl = acl($nick);
-    if ( $acl->{$nick} ne "A" ) { return; }
+    my $nacl = acl($nick);
+
+    if ( !defined($nacl) || ( $nacl->{'access'} !~ 'A' ) ) {
+        $irc->yield( notice => $nick => "No Access!" );
+        return;
+    }
 
     if ( $nickname eq "" ) { return; }
 
@@ -902,7 +906,7 @@ sub del_user {
 
     my $sth = $dbh->prepare($query);
     if ($@) {
-        $irc->yield( privmsg => $chan => "Error inserting user: " . $@ );
+        $irc->yield( privmsg => $chan => "Error deleting user: " . $@ );
         return;
     }
     $sth->bind_param( 1, $nickname );
