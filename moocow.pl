@@ -155,6 +155,7 @@ sub _start {
     );
     $irc->yield( register => 'all' );
     $irc->yield( connect  => {} );
+
     return;
 }
 
@@ -171,13 +172,9 @@ sub irc_001 {
     return;
 }
 
-sub irc_nick_sync {
+sub ban_expire {
 
     my ( $umask, $channel ) = @_[ ARG0, ARG1 ];
-    my $nick = ( split /!/, $umask )[0];
-
-    my $acl = chan_acl( $nick, $channel );
-    my $uacl = acl($nick);
 
     if ($banexpire > 0) {
 
@@ -188,10 +185,20 @@ sub irc_nick_sync {
             my $bantime = $tm - $banlist->{$q}->{'SetAt'};
             if($bantime > $banexpire) {
                 $irc->yield( mode => $channel => "-b $q" );
-            } 
+            }
         }
 
     }
+
+}
+
+sub irc_nick_sync {
+
+    my ( $umask, $channel ) = @_[ ARG0, ARG1 ];
+    my $nick = ( split /!/, $umask )[0];
+
+    my $acl = chan_acl( $nick, $channel );
+    my $uacl = acl($nick);
 
     return if ( !defined($acl) );
 
