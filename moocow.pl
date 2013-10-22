@@ -64,8 +64,24 @@ foreach my $c ( split( ',', $channels ) ) {
     $chans{$chan} = $key;
 }
 
+my $q = q{SELECT channame, chankey FROM channel};
+
+
 my $dbh = DBI->connect("dbi:SQLite:$dbpath")
   || die "Cannot connect: $DBI::errstr";
+
+my $sth = $dbh->prepare($q) || die "Error: cannot get channel list " . $dbh->errstr;
+$sth->execute() || die "Error: cannot get channel list " . $sth->errstr;
+
+my $chanref = $dbh->selectall_hashref($q, 'channame');
+foreach my $q (keys(%$chanref))
+{
+        my $key = $chanref->{$q}->{'chankey'};
+        $key = "" if (!defined($key));
+        $chans{$q} = $key;
+}
+
+
 
 my $irc = POE::Component::IRC::State->spawn(
     nick    => $nickname,
