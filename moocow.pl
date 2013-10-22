@@ -357,8 +357,8 @@ sub addquote {
 
     my $query = 'INSERT INTO quotes(quote, usermask, channel, timestamp) VALUES (?, ?, LOWER(?), strftime(\'%s\',\'now\'))';
     my $sth   = $dbh->prepare($query);
-    if ($@) {
-        $irc->yield( privmsg => $channel => "Error inserting quote: " . $@ );
+    if (!$sth) {
+        $irc->yield( privmsg => $channel => "Error inserting quote: " . $dbh->errstr );
         return;
     }
     $sth->bind_param( 1, $quote );
@@ -366,9 +366,9 @@ sub addquote {
     $sth->bind_param( 3, $channel );
 
     #DBI::dump_results($sth);
-    $sth->execute();
-    if ($@) {
-        $irc->yield( privmsg => $channel => "Error inserting quote: " . $sth->err );
+    my $rv = $sth->execute();
+    if (!$rv) {
+        $irc->yield( privmsg => $channel => "Error inserting quote: " . $sth->errstr );
     }
     else {
         if ( $sth->rows > 0 ) {
@@ -396,17 +396,17 @@ sub weather_default {
     my $query = q{UPDATE users set wzdefault = ? where username = (SELECT username WHERE usermask.userid == users.userid AND ? GLOB usermask.hostmask)};
 
     my $sth = $dbh->prepare($query);
-    if ($@) {
-        $irc->yield( privmsg => $chan => "Error updating default: " . $@ );
+    if (!$sth) {
+        $irc->yield( privmsg => $chan => "Error updating default: " . $dbh->errstr );
         return;
     }
     $sth->bind_param( 1, $zip );
     $sth->bind_param( 2, $prams[2] );
 
     #DBI::dump_results($sth);
-    $sth->execute();
-    if ($@) {
-        $irc->yield( privmsg => $chan => "Error updating default: " . $sth->err );
+    my $rv = $sth->execute();
+    if (!$rv) {
+        $irc->yield( privmsg => $chan => "Error updating default: " . $sth->errstr );
     }
     else {
         if ( $sth->rows > 0 ) {
@@ -795,8 +795,8 @@ sub addchan {
     my $query = q{INSERT INTO channel (channame, ownerid, chankey) VALUES (?,  (SELECT userid FROM users WHERE username = ?), ?) };
 
     my $sth = $dbh->prepare($query);
-    if ($@) {
-        $irc->yield( privmsg => $who => "Error preparing statement: " . $@ );
+    if (!$sth) {
+        $irc->yield( privmsg => $who => "Error preparing statement: " . $dbh->errstr );
     }
     $sth->bind_param( 1, $channel );
     $sth->bind_param( 2, $owner );
@@ -888,8 +888,8 @@ sub add_user {
     my $query = q{INSERT INTO users (username, access) VALUES(?, ?)};
 
     my $sth = $dbh->prepare($query);
-    if ($@) {
-        $irc->yield( privmsg => $chan => "Error preparing insert statement for useradd: " . $@ );
+    if (!$sth) {
+        $irc->yield( privmsg => $chan => "Error preparing insert statement for useradd: " . $dbh->errstr );
         $sth->finish;
         $dbh->rollback;
         return;
@@ -906,8 +906,8 @@ sub add_user {
     }
     $query = q{INSERT INTO usermask (hostmask, userid) VALUES(?, (SELECT(userid) FROM users WHERE username = ?))};
     $sth   = $dbh->prepare($query);
-    if ($@) {
-        $irc->yield( privmsg => $chan => "Error preparing insert statement for usermask add: " . $@ );
+    if (!$sth) {
+        $irc->yield( privmsg => $chan => "Error preparing insert statement for usermask add: " . $dbh->errstr );
         $sth->finish;
         $dbh->rollback;
         return;
@@ -950,8 +950,8 @@ sub del_user {
     my $query = q{DELETE FROM users where username = ?};
 
     my $sth = $dbh->prepare($query);
-    if ($@) {
-        $irc->yield( privmsg => $chan => "Error deleting user: " . $@ );
+    if (!$sth) {
+        $irc->yield( privmsg => $chan => "Error deleting user: " . $dbh->errstr );
         return;
     }
     $sth->bind_param( 1, $nickname );
@@ -991,13 +991,13 @@ sub chan_acl {
 
     my $query = q{SELECT username, hostmask, chaccess from users, usermask, channel, chanuser WHERE ? GLOB usermask.hostmask AND users.userid = usermask.userid AND chanuser.chanid = channel.chanid AND channame = ?};
 
-    my $sth = $dbh->prepare($query);
+    my $sth = $dbh->prepare($query) || die("Unable to prepare ACL query: " . $dbh->errstr);
 
     #DBI::dump_results($sth);
 
     $sth->bind_param( 1, $host );
     $sth->bind_param( 2, $chan );
-    $sth->execute() || die("Unable to execute $@");
+    $sth->execute() || die("Unable to execute query " . $sth->errstr);
 
     if ( defined( my $res = $sth->fetchrow_hashref ) ) {
         if ( matches_mask( $res->{'hostmask'}, $host ) ) {
@@ -1035,12 +1035,12 @@ sub acl {
 
     my $query = q{SELECT users.username AS username, usermask.hostmask AS hostmask, users.access AS access FROM users,usermask WHERE usermask.userid == users.userid AND  ? GLOB usermask.hostmask};
 
-    $sth = $dbh->prepare($query);
+    $sth = $dbh->prepare($query) || die("Unable to prepare ACL query: " . $dbh->errstr);
 
     #DBI::dump_results($sth);
 
     $sth->bind_param( 1, $host );
-    $sth->execute() || die("Unable to execute $@");
+    $sth->execute() || die("Unable to execute ACL query: " . $sth->errstr);
 
     if ( defined( my $res = $sth->fetchrow_hashref ) ) {
         if ( matches_mask( $res->{'hostmask'}, $host ) ) {
@@ -1124,9 +1124,8 @@ sub mod_user {
     my $query = q{UPDATE users set access = ? where username = ?};
 
     my $sth = $dbh->prepare($query);
-    if ($@) {
-        $irc->yield( privmsg => $chan => "Error preparing update statement for useradd: " . $@ );
-        $sth->finish;
+    if (!$sth) {
+        $irc->yield( privmsg => $chan => "Error preparing update statement for useradd: " . $dbh->errstr);
         $dbh->rollback;
         return;
     }
