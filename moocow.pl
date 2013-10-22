@@ -118,6 +118,9 @@ $pmsg_cmd_hash{"add_chanuser"} = sub { add_chanuser(@_); };
 
 $pmsg_cmd_hash{"moduser"} = sub { mod_user(@_); };
 $pmsg_cmd_hash{"listusers"} = sub { list_users(@_); };
+$pmsg_cmd_hash{"mod_chanuser"} = sub { mod_chanuser(@_); };
+$pmsg_cmd_hash{"list_chanuser"} = sub { list_chanuser(@_); };
+
 
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_msg irc_ctcp_version irc_nick_sync)], ],
@@ -1058,5 +1061,39 @@ sub list_users {
 
     }
 
+
+}
+
+sub mod_chanuser {
+
+    my @prams = @_;
+    my $chan  = $prams[1];
+    my $nick  = $prams[2];
+
+    my @args = split / /, $prams[0];
+
+    my $nacl = acl($nick);
+
+    if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
+        $irc->yield( notice => $nick => "No Access!" );
+        return;
+    }
+
+}
+
+sub list_chanuser {
+
+    my @prams = @_;
+    my $chan  = $prams[1];
+    my $nick  = $prams[2];
+
+    my @args = split / /, $prams[0];
+
+    my $nacl = acl($nick);
+
+    if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
+        $irc->yield( notice => $nick => "No Access!" );
+        return;
+    }
 
 }
