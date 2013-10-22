@@ -16,6 +16,10 @@ if [ ! `which gcc` ]; then
      echo "gcc not installed, need gcc to build modules"
      exit 1
 fi
+
+if [ ! `which make` ]; then
+    echo "make not installed, need make to build modules"
+fi
    
 OLDIFS="$IFS"
 IFS=';'
