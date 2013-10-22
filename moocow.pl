@@ -343,7 +343,7 @@ sub quote {
     while ( defined( my $res = $sth->fetchrow_hashref ) ) {
 
         my $qt = $res->{'quote'};
-        my $um = $res->{'usermask'};
+        my $um = parse_user($res->{'usermask'});
         my $id = $res->{'quoteid'};
         my $ts = strftime( "%Y-%m-%d %H:%M:%S", localtime( $res->{'timestamp'} ) );
         $irc->yield( privmsg => $channel => "Quote[$id] $qt [$um] [$ts]" );
@@ -362,7 +362,7 @@ sub addquote {
     my @prams   = @_;
     my $quote   = $prams[0];
     my $channel = $prams[1];
-    my $who     = $prams[2];
+    my $who     = $prams[3];
 
     my $query = 'INSERT INTO quotes(quote, usermask, channel, timestamp) VALUES (?, ?, LOWER(?), strftime(\'%s\',\'now\'))';
     my $sth   = $dbh->prepare($query);
