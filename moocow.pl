@@ -120,15 +120,17 @@ $pmsg_cmd_hash{"list_chanuser"} = sub { list_chanuser(@_); };
 
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_msg irc_ctcp_version irc_nick_sync)], ],
-    inline_states  => { },
+    inline_states  => { ban_expire => sub { ban_expire(@_); } },
     heap           => { irc  => $irc },
 );
+
 
 $poe_kernel->run();
 
 sub _start {
     my $heap = $_[HEAP];
-
+    my $kernel = $_[KERNEL];
+    
     # retrieve our component's object from the heap where we stashed it
     my $irc = $heap->{irc};
     $autojoin = $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans ) );
@@ -149,6 +151,8 @@ sub _start {
             source     => "grass"
         )
     );
+
+    $kernel->delay('ban_expire', $banexpire);
     $irc->yield( register => 'all' );
     $irc->yield( connect  => {} );
 
@@ -170,9 +174,9 @@ sub irc_001 {
 
 sub ban_expire {
 
-    my ( $umask, $channel ) = @_[ ARG0, ARG1 ];
-
-print "Expiring bans...\n";
+    my ( $kernel, $umask, $channel ) = @_[KERNEL,  ARG0, ARG1 ];
+    
+print "Expiring bans... $umask $channel\n";
     if ( $banexpire > 0 ) {
         my $banlist = $irc->channel_ban_list($channel);
         foreach my $q ( keys($banlist) ) {
@@ -184,6 +188,7 @@ print "Expiring bans...\n";
         }
 
     }
+    $kernel->delay('ban_expire', $banexpire);
 
 
     return;
