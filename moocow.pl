@@ -57,7 +57,7 @@ else {
 }
 
 my %chans;
-
+my $autojoin;
 #foreach my $c ( split( ',', $channels ) ) {
 #    my ( $chan, $key ) = split( / /, $c );
 #    $key = "" if ( !defined($key) );
@@ -66,22 +66,19 @@ my %chans;
 
 my $q = q{SELECT channame, chankey FROM channel};
 
-
 my $dbh = DBI->connect("dbi:SQLite:$dbpath")
   || die "Cannot connect: $DBI::errstr";
 
-my $sth = $dbh->prepare($q) || die "Error: cannot get channel list " . $dbh->errstr;
+my $sth = $dbh->prepare($q)
+  || die "Error: cannot get channel list " . $dbh->errstr;
 $sth->execute() || die "Error: cannot get channel list " . $sth->errstr;
 
-my $chanref = $dbh->selectall_hashref($q, 'channame');
-foreach my $q (keys(%$chanref))
-{
-        my $key = $chanref->{$q}->{'chankey'};
-        $key = "" if (!defined($key));
-        $chans{$q} = $key;
+my $chanref = $dbh->selectall_hashref( $q, 'channame' );
+foreach my $q ( keys(%$chanref) ) {
+    my $key = $chanref->{$q}->{'chankey'};
+    $key = "" if ( !defined($key) );
+    $chans{$q} = $key;
 }
-
-
 
 my $irc = POE::Component::IRC::State->spawn(
     nick    => $nickname,
@@ -102,7 +99,7 @@ $cmd_hash{"tu"}        = sub { gogl(@_); };
 $cmd_hash{"u2"}        = sub { youtube(@_); };
 $cmd_hash{"help"}      = sub { help(@_); };
 $cmd_hash{"codeword"}  = sub { codeword(@_); };
-$cmd_hash{"wz"}       = sub { weather_extended(@_); };
+$cmd_hash{"wz"}        = sub { weather_extended(@_); };
 $cmd_hash{"wzd"}       = sub { weather_default(@_); };
 $cmd_hash{"nhl"}       = sub { nhl_standings(@_); };
 $cmd_hash{"words"}     = sub { word(@_); };
@@ -116,11 +113,10 @@ $pmsg_cmd_hash{"checkuser"} = sub { check_user(@_); };
 $pmsg_cmd_hash{"addchan"}      = sub { addchan(@_); };
 $pmsg_cmd_hash{"add_chanuser"} = sub { add_chanuser(@_); };
 
-$pmsg_cmd_hash{"moduser"} = sub { mod_user(@_); };
-$pmsg_cmd_hash{"listusers"} = sub { list_users(@_); };
-$pmsg_cmd_hash{"mod_chanuser"} = sub { mod_chanuser(@_); };
+$pmsg_cmd_hash{"moduser"}       = sub { mod_user(@_); };
+$pmsg_cmd_hash{"listusers"}     = sub { list_users(@_); };
+$pmsg_cmd_hash{"mod_chanuser"}  = sub { mod_chanuser(@_); };
 $pmsg_cmd_hash{"list_chanuser"} = sub { list_chanuser(@_); };
-
 
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_msg irc_ctcp_version irc_nick_sync)], ],
@@ -135,7 +131,7 @@ sub _start {
 
     # retrieve our component's object from the heap where we stashed it
     my $irc = $heap->{irc};
-    $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans ) );
+    $autojoin = $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans ) );
     $irc->plugin_add(
         'Connector',
         POE::Component::IRC::Plugin::Connector->new(
@@ -177,14 +173,12 @@ sub ban_expire {
     my ( $umask, $channel ) = @_[ ARG0, ARG1 ];
 
 print "Expiring bans...\n";
-
-    if ($banexpire > 0) {
+    if ( $banexpire > 0 ) {
         my $banlist = $irc->channel_ban_list($channel);
-        foreach my $q (keys($banlist))
-        {
-            my $tm = time();
+        foreach my $q ( keys($banlist) ) {
+            my $tm      = time();
             my $bantime = $tm - $banlist->{$q}->{'SetAt'};
-            if($bantime > $banexpire) {
+            if ( $bantime > $banexpire ) {
                 $irc->yield( mode => $channel => "-b $q" );
             }
         }
@@ -201,8 +195,8 @@ sub irc_nick_sync {
     my ( $umask, $channel ) = @_[ ARG0, ARG1 ];
     my $nick = ( split /!/, $umask )[0];
 
-    my $acl = chan_acl( $nick, $channel );
-    my $uacl = acl($nick, $umask);
+    my $acl = chan_acl( $nick, $channel, $umask);
+    my $uacl = acl( $nick, $umask );
 
     return if ( !defined($acl) );
 
@@ -231,7 +225,7 @@ sub irc_msg {
     my $cmd = shift @cmd;
     my $cmdargs = join( " ", @cmd );
     if ( exists $pmsg_cmd_hash{$cmd} ) {
-        $pmsg_cmd_hash{$cmd}->( $cmdargs, $nick, $nick );
+        $pmsg_cmd_hash{$cmd}->( $cmdargs, $nick, $nick, $who );
     }
 }
 
@@ -255,7 +249,7 @@ sub irc_public {
     }
     if ($autourl) {
         if ( my ($youtube) = $what =~ /^(https?:\/\/(www\.youtube\.com|youtube\.com|youtu\.be)\/.*)/ ) {
-            youtube( $youtube, $channel, $nick, $who);
+            youtube( $youtube, $channel, $nick, $who );
         }
         elsif ( my ($gogl) = $what =~ /^(https?:\/\/.*)/ ) {
             gogl( $gogl, $channel, $nick, $who );
@@ -376,23 +370,23 @@ sub addquote {
 
 sub weather_default {
 
-    my @prams  = @_;
-    my $zip    = $prams[0];
-    my $chan   = $prams[1];
-    my $nick    = $prams[2];
-    my $who	= $prams[3];
-    my $nacl = acl($nick, $who);
+    my @prams = @_;
+    my $zip   = $prams[0];
+    my $chan  = $prams[1];
+    my $nick  = $prams[2];
+    my $who   = $prams[3];
+    my $nacl  = acl( $nick, $who );
 
-    if ( !defined($nacl)) {
+    if ( !defined($nacl) ) {
         $irc->yield( privmsg => $chan => "No Access!" );
         return;
     }
 
     if ( $zip eq "" ) { return }
 
-    my $query = q{UPDATE users set wzdefault = ? where username = ?};
+    my $query = q{UPDATE users set wzdefault = ? where username = (SELECT username WHERE usermask.userid == users.userid AND ? GLOB usermask.hostmask)};
 
-    my $sth   = $dbh->prepare($query);
+    my $sth = $dbh->prepare($query);
     if ($@) {
         $irc->yield( privmsg => $chan => "Error updating default: " . $@ );
         return;
@@ -418,27 +412,34 @@ sub weather_extended {
     my @prams  = @_;
     my $zip    = $prams[0];
     my $chan   = $prams[1];
+    my $nick   = $prams[2];
+    my $who    = $prams[3];
     my $apikey = readconfig('apikey');
 
-    if($zip eq "") {
-
-       my $query = q{SELECT wzdefault FROM users WHERE username = ?};
-       my $sth = $dbh->prepare($query);
-    if ($@) {
-        $irc->yield( privmsg => $chan => "Use !wzd to set a default zip.");
-        return;
-    }
-    $sth->bind_param( 1, $prams[2] );
-    $sth->execute();
-    if ($@) {
-        $irc->yield( privmsg => $chan => "Use !wzd to set a default zip");
-    }
-    else {
-        if ( defined( my $res = $sth->fetchrow_hashref ) ) {
-            $zip = $res->{'wzdefault'};
+    if ( $zip eq "") {
+        if(!acl($nick, $who))
+        {
+            $irc->yield(notice => $nick => "Must be a user to set default weather");
+            return;
         }
-    }
- 
+
+        my $query = q{SELECT wzdefault FROM users, usermask WHERE username = (SELECT username WHERE usermask.userid == users.userid AND ? GLOB usermask.hostmask)};
+
+        my $sth   = $dbh->prepare($query);
+        if (!$sth) {
+            $irc->yield( privmsg => $chan => "Unable to check default location: " . $dbh->errstr);
+            return;
+        }
+        $sth->bind_param( 1, $who );
+        my $rv = $sth->execute();
+        if (!$rv) {
+            $irc->yield( privmsg => $chan => "Unable to check default location: " . $sth->errstr );
+        }
+        else {
+            if ( defined( my $res = $sth->fetchrow_hashref ) ) {
+                $zip = $res->{'wzdefault'};
+            }
+        }
 
     }
 
@@ -472,15 +473,12 @@ sub weather_extended {
     my $pressmb  = $cond->pressure_mb;
     my $wind     = $cond->wind_string;
     $wind =~ s/From the //;
-    my $dew    = $cond->dewpoint_string;
-    my $precip = $cond->precip_today_string;
-    my $forecast   = $wun->forecast->txt_forecast->forecastday->[0]{fcttext};
+    my $dew      = $cond->dewpoint_string;
+    my $precip   = $cond->precip_today_string;
+    my $forecast = $wun->forecast->txt_forecast->forecastday->[0]{fcttext};
 
-
-#Harpers Ferry, WV; Updated: 3:00 PM EDT on October 17, 2013; Conditions: Overcast; Temperature: 71.2°F (21.8°C); UV: 1/16 Humidity: 75%; Pressure: 29.79 in/2054 hPa (Falling); Wind: SSE at 5.0 MPH (8 KPH)
-    $irc->yield( privmsg => $chan =>
-"WX $location Updated: $updated Conditions: $weather: Temp: $temp Feels like: $feels Dewpoint: $dew UV: $uv Humidity: $humid: Pressure: ${pressin}/in/${pressmb} MB Wind: $wind Precip: $precip"
-    );
+    #Harpers Ferry, WV; Updated: 3:00 PM EDT on October 17, 2013; Conditions: Overcast; Temperature: 71.2°F (21.8°C); UV: 1/16 Humidity: 75%; Pressure: 29.79 in/2054 hPa (Falling); Wind: SSE at 5.0 MPH (8 KPH)
+    $irc->yield( privmsg => $chan => "WX $location Updated: $updated Conditions: $weather: Temp: $temp Feels like: $feels Dewpoint: $dew UV: $uv Humidity: $humid: Pressure: ${pressin}/in/${pressmb} MB Wind: $wind Precip: $precip" );
     $irc->yield( privmsg => $chan => "$forecast" );
 
     #    my $resp = $wun->r->full_location . "Updated: $obs"
@@ -622,14 +620,7 @@ sub title {
 sub youtube {
     my $u2 = $3 if ( $_[0] =~ m/^.*youtu(\.)?be(\.com\/watch\?v=|\/)(.*)/i );
     my $yt = new WebService::GData::YouTube();
-    say( $_[1],
-            "YouTube: \x02"
-          . $yt->get_video_by_id($u2)->title()
-          . "\x02 Duration: \x02"
-          . $yt->get_video_by_id($u2)->duration
-          . "\x02 seconds Views: \x02"
-          . $yt->get_video_by_id($u2)->view_count
-          . "\x02" );
+    say( $_[1], "YouTube: \x02" . $yt->get_video_by_id($u2)->title() . "\x02 Duration: \x02" . $yt->get_video_by_id($u2)->duration . "\x02 seconds Views: \x02" . $yt->get_video_by_id($u2)->view_count . "\x02" );
     my $url = gogl_url(@_);
     say( $_[1], $url ) if ( defined($url) );
 }
@@ -701,7 +692,7 @@ sub help {
     $irc->yield( notice => $nick => "!word: word scramble game" );
     $irc->yield( notice => $nick => "!moo: moo." );
 
-    my $nacl = acl($nick, $who);
+    my $nacl = acl( $nick, $who );
 
     if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
         return;
@@ -717,7 +708,7 @@ sub help {
     $irc->yield( notice => $nick => "!listusers" );
     $irc->yield( notice => $nick => "!mod_chanuser <channel> <nickname> <acl>" );
     $irc->yield( notice => $nick => "!list_chanuser <channel>" );
-  
+
 }
 
 sub nhl_standings {
@@ -731,7 +722,13 @@ sub nhl_standings {
 
     $division = lc($division);
 
-    if (($division ne "atlantic")&&($division ne "pacific")&&($division ne "central")&&($division ne "metropolitan")) {return;}
+    if (   ( $division ne "atlantic" )
+        && ( $division ne "pacific" )
+        && ( $division ne "central" )
+        && ( $division ne "metropolitan" ) )
+    {
+        return;
+    }
 
     my $url = "http://www.nhl.com/ice/m_standings.htm?type=DIV";
 
@@ -775,16 +772,18 @@ sub addchan {
 
     my @args = split / /, $prams[0];
 
-    my $nacl    = acl($nick, $umask);
+    my $nacl    = acl( $nick, $umask );
     my $channel = $args[0];
     my $owner   = $args[1];
-
+    my $key 	= $args[2];
     if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
         $irc->yield( notice => $who => "No Access!" );
         return;
     }
 
-    my $query = q{INSERT INTO channel (channame, ownerid) VALUES (?,  (SELECT userid FROM users WHERE username = ?))};
+    $key = '' if(!defined($key));
+
+    my $query = q{INSERT INTO channel (channame, ownerid, chankey) VALUES (?,  (SELECT userid FROM users WHERE username = ?), ?) };
 
     my $sth = $dbh->prepare($query);
     if ($@) {
@@ -792,7 +791,8 @@ sub addchan {
     }
     $sth->bind_param( 1, $channel );
     $sth->bind_param( 2, $owner );
-
+    $sth->bind_param( 3, $key );
+    
     my $rv = $sth->execute();
 
     if ( !$rv ) {
@@ -802,6 +802,10 @@ sub addchan {
 
     if ( $sth->rows > 0 ) {
         $irc->yield( privmsg => $who => "Added channel $channel with owner: $owner" );
+        $chans{$channel} = $key;
+        $irc->plugin_del('AutoJoin');
+        $autojoin = $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans));
+        $irc->yield( join => $channel => $key);
     }
 
 }
@@ -811,9 +815,9 @@ sub add_chanuser {
     my $who   = $prams[1];
     my $nick  = $prams[2];
     my $umask = $prams[3];
-    my @args = split / /, $prams[0];
+    my @args  = split / /, $prams[0];
 
-    my $nacl = acl($nick, $umask);
+    my $nacl = acl( $nick, $umask );
     if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
         $irc->yield( notice => $who => "No Access!" );
         return;
@@ -853,7 +857,7 @@ sub add_user {
 
     my @args = split / /, $prams[0];
 
-    my $nacl = acl($nick, $umask);
+    my $nacl = acl( $nick, $umask );
 
     if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
         $irc->yield( notice => $nick => "No Access!" );
@@ -923,9 +927,9 @@ sub del_user {
     my $nickname = $prams[0];
     my $chan     = $prams[1];
     my $nick     = $prams[2];
-    my $umask	 = $prams[3];
+    my $umask    = $prams[3];
 
-    my $nacl = acl($nick, $umask);
+    my $nacl = acl( $nick, $umask );
 
     if ( !defined($nacl) || ( $nacl->{'access'} !~ 'A' ) ) {
         $irc->yield( notice => $nick => "No Access!" );
@@ -961,13 +965,22 @@ sub chan_acl {
 
     my $nickname = $prams[0];
     my $chan     = $prams[1];
+    my $hostmask = $prams[2];
+    my $host;    
+    
+    if ( defined($hostmask) || $hostmask ne '') {
+        print "Using hostmask passed\n";
+        $host = $hostmask;
+    }
+    else {
+        print "looking up hostmask\n";
+        my $var = $irc->nick_info("$nickname");
+        $host = $nickname . "!" . $var->{'Userhost'};
+    }
 
-    my $var  = $irc->nick_info($nickname);
-    my $host = $nickname . "!" . $var->{'Userhost'};
     my %access;
 
-    my $query =
-q{SELECT username, hostmask, chaccess from users, usermask, channel, chanuser WHERE ? GLOB usermask.hostmask AND users.userid = usermask.userid AND chanuser.chanid = channel.chanid AND channame = ?};
+    my $query = q{SELECT username, hostmask, chaccess from users, usermask, channel, chanuser WHERE ? GLOB usermask.hostmask AND users.userid = usermask.userid AND chanuser.chanid = channel.chanid AND channame = ?};
 
     my $sth = $dbh->prepare($query);
 
@@ -994,22 +1007,23 @@ q{SELECT username, hostmask, chaccess from users, usermask, channel, chanuser WH
 sub acl {
     my @prams    = @_;
     my $nickname = $prams[0];
-    my $hostmask     = $prams[1];
+    my $hostmask = $prams[1];
 
     my $sth;
-    my $hostmask;
     my $tnick;
     my %access;
 
-    my $host; 
-    if(defined($hostmask))
-    {
+    my $host;
+    if ( defined($hostmask) ) {
+        print "Using hostmask passed\n";
         $host = $hostmask;
-    } else {
+    }
+    else {
+        print "looking up hostmask\n";
         my $var = $irc->nick_info("$nickname");
         $host = $nickname . "!" . $var->{'Userhost'};
     }
-    
+
     my $query = q{SELECT users.username AS username, usermask.hostmask AS hostmask, users.access AS access FROM users,usermask WHERE usermask.userid == users.userid AND  ? GLOB usermask.hostmask};
 
     $sth = $dbh->prepare($query);
@@ -1048,11 +1062,11 @@ sub check_user {
     my $nickname = $prams[0];
     my $who      = $prams[1];
     my $nick     = $prams[2];
-    my $umask 	 = $prams[3];
+    my $umask    = $prams[3];
 
     #   print Dumper($acl);
 
-    my $nacl = acl($who, $umask);
+    my $nacl = acl( $who, $umask );
 
     if ( !defined($nacl) || ( $nacl->{'access'} !~ 'O|A' ) ) {
         $irc->yield( notice => $who => "No Access!" );
@@ -1078,9 +1092,9 @@ sub mod_user {
     my $chan  = $prams[1];
     my $nick  = $prams[2];
     my $umask = $prams[3];
-    my @args = split / /, $prams[0];
+    my @args  = split / /, $prams[0];
 
-    my $nacl = acl($nick, $umask);
+    my $nacl = acl( $nick, $umask );
 
     if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
         $irc->yield( notice => $nick => "No Access!" );
@@ -1133,7 +1147,7 @@ sub list_users {
 
     my @args = split / /, $prams[0];
 
-    my $nacl = acl($nick, $umask);
+    my $nacl = acl( $nick, $umask );
 
     if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
         $irc->yield( notice => $nick => "No Access!" );
@@ -1141,18 +1155,17 @@ sub list_users {
     }
 
     my $query = q{SELECT username,access,userid from users};
-    my $sth = $dbh->prepare($query);
-    my $rv = $sth->execute();
+    my $sth   = $dbh->prepare($query);
+    my $rv    = $sth->execute();
 
     while ( defined( my $res = $sth->fetchrow_hashref ) ) {
 
-        my $uname = $res->{'username'};
+        my $uname  = $res->{'username'};
         my $access = $res->{'access'};
         my $userid = $res->{'userid'};
         $irc->yield( privmsg => $nick => "Username: $uname Access: $access UserID: $userid" );
 
     }
-
 
 }
 
@@ -1165,7 +1178,7 @@ sub mod_chanuser {
 
     my @args = split / /, $prams[0];
 
-    my $nacl = acl($nick, $umask);
+    my $nacl = acl( $nick, $umask );
 
     if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
         $irc->yield( notice => $nick => "No Access!" );
@@ -1183,7 +1196,7 @@ sub list_chanuser {
 
     my @args = split / /, $prams[0];
 
-    my $nacl = acl($nick, $umask);
+    my $nacl = acl( $nick, $umask );
 
     if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
         $irc->yield( notice => $nick => "No Access!" );
