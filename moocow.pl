@@ -32,6 +32,8 @@ parseconfig($confpath);
 my $nickname  = readconfig('nickname');
 my $ircname   = readconfig('ircname');
 my $server    = readconfig('server');
+my $port      = readconfig('port');
+my $usessl    = readconfig('usessl');
 my $trigger   = readconfig('trigger');
 my $dbpath    = readconfig('dbpath');
 my $autourl   = readconfig('autourl');
@@ -84,6 +86,8 @@ my $irc = POE::Component::IRC::State->spawn(
     nick    => $nickname,
     ircname => $ircname,
     server  => $server,
+    Port    => $port,
+    UseSSL  => $usessl,
     Debug   => 1,
     Flood   => 0,
 ) or die "Oh noooo! $!";
@@ -112,6 +116,8 @@ $pmsg_cmd_hash{"checkuser"} = sub { check_user(@_); };
 
 $pmsg_cmd_hash{"addchan"}      = sub { addchan(@_); };
 $pmsg_cmd_hash{"add_chanuser"} = sub { add_chanuser(@_); };
+$pmsg_cmd_hash{"delchan"}      = sub { delchan(@_); };
+$pmsg_cmd_hash{"listchan"}      = sub { listchan(@_); };
 
 $pmsg_cmd_hash{"moduser"}       = sub { mod_user(@_); };
 $pmsg_cmd_hash{"listusers"}     = sub { list_users(@_); };
@@ -120,16 +126,17 @@ $pmsg_cmd_hash{"list_chanuser"} = sub { list_chanuser(@_); };
 
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_msg irc_ctcp_version irc_nick_sync)], ],
-    inline_states  => { 
-                      },
+    inline_states  => { ban_expire => sub { ban_expire(@_); } },
     heap           => { irc  => $irc },
 );
+
 
 $poe_kernel->run();
 
 sub _start {
     my $heap = $_[HEAP];
-
+    my $kernel = $_[KERNEL];
+    
     # retrieve our component's object from the heap where we stashed it
     my $irc = $heap->{irc};
     $autojoin = $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans ) );
@@ -150,6 +157,8 @@ sub _start {
             source     => "grass"
         )
     );
+
+    $kernel->delay('ban_expire', $banexpire);
     $irc->yield( register => 'all' );
     $irc->yield( connect  => {} );
 
@@ -171,7 +180,10 @@ sub irc_001 {
 
 sub ban_expire {
 
-    my ( $umask, $channel ) = @_[ ARG0, ARG1 ];
+    my ( $kernel, $umask, $channel ) = @_[KERNEL,  ARG0, ARG1 ];
+    print "Called ban expire event...\n";
+    return;    
+#print "Expiring bans... $umask $channel\n";
 
     if ( $banexpire > 0 ) {
         my $banlist = $irc->channel_ban_list($channel);
@@ -184,6 +196,7 @@ sub ban_expire {
         }
 
     }
+    $kernel->delay('ban_expire', $banexpire);
 
     return;
 
@@ -243,15 +256,16 @@ sub irc_public {
         $word_s         = "";
         $word_on        = 0;
     }
-    if ( $what =~ m/^hack/i ) {
-        hack();
-    }
+
+    # these techenically will catch the !tu !u2 urls, but the end result is the same for autourl
     if ($autourl) {
-        if ( my ($youtube) = $what =~ /^(https?:\/\/(www\.youtube\.com|youtube\.com|youtu\.be)\/.*)/ ) {
+        if ( my ($youtube) = $what =~ /(https?:\/\/(www\.youtube\.com|youtube\.com|youtu\.be)\/.*)/ ) {
             youtube( $youtube, $channel, $nick, $who );
+            return;
         }
-        elsif ( my ($gogl) = $what =~ /^(https?:\/\/.*)/ ) {
+        elsif ( my ($gogl) = $what =~ /(https?:\/\/.*)/ ) {
             gogl( $gogl, $channel, $nick, $who );
+            return;
         }
     }
 
@@ -309,14 +323,18 @@ sub quote {
     else {
         $query = $query . q{ ORDER BY RANDOM() LIMIT 1; };
         $sth   = $dbh->prepare($query);
+        if(!$sth)
+        {
+            $irc->yield(privmsg => $channel => "Error looking up quote: " . $dbh->errstr);
+            return;
+        }
         $sth->bind_param( 1, $channel );
-        warn if ($@);
     }
 
-    $sth->execute() || die("Unable to execute $@");
+    my $rv = $sth->execute();
 
-    if ($@) {
-        $irc->yield( privmsg => $channel => "Error reading quote: " . $@ );
+    if (!$rv) {
+        $irc->yield( privmsg => $channel => "Error reading quote: " . $sth->errstr );
         return;
     }
 
@@ -324,7 +342,7 @@ sub quote {
     while ( defined( my $res = $sth->fetchrow_hashref ) ) {
 
         my $qt = $res->{'quote'};
-        my $um = $res->{'usermask'};
+        my $um = parse_user($res->{'usermask'});
         my $id = $res->{'quoteid'};
         my $ts = strftime( "%Y-%m-%d %H:%M:%S", localtime( $res->{'timestamp'} ) );
         $irc->yield( privmsg => $channel => "Quote[$id] $qt [$um] [$ts]" );
@@ -343,12 +361,12 @@ sub addquote {
     my @prams   = @_;
     my $quote   = $prams[0];
     my $channel = $prams[1];
-    my $who     = $prams[2];
+    my $who     = $prams[3];
 
     my $query = 'INSERT INTO quotes(quote, usermask, channel, timestamp) VALUES (?, ?, LOWER(?), strftime(\'%s\',\'now\'))';
     my $sth   = $dbh->prepare($query);
-    if ($@) {
-        $irc->yield( privmsg => $channel => "Error inserting quote: " . $@ );
+    if (!$sth) {
+        $irc->yield( privmsg => $channel => "Error inserting quote: " . $dbh->errstr );
         return;
     }
     $sth->bind_param( 1, $quote );
@@ -356,9 +374,9 @@ sub addquote {
     $sth->bind_param( 3, $channel );
 
     #DBI::dump_results($sth);
-    $sth->execute();
-    if ($@) {
-        $irc->yield( privmsg => $channel => "Error inserting quote: " . $sth->err );
+    my $rv = $sth->execute();
+    if (!$rv) {
+        $irc->yield( privmsg => $channel => "Error inserting quote: " . $sth->errstr );
     }
     else {
         if ( $sth->rows > 0 ) {
@@ -386,17 +404,17 @@ sub weather_default {
     my $query = q{UPDATE users set wzdefault = ? where username = (SELECT username WHERE usermask.userid == users.userid AND ? GLOB usermask.hostmask)};
 
     my $sth = $dbh->prepare($query);
-    if ($@) {
-        $irc->yield( privmsg => $chan => "Error updating default: " . $@ );
+    if (!$sth) {
+        $irc->yield( privmsg => $chan => "Error updating default: " . $dbh->errstr );
         return;
     }
     $sth->bind_param( 1, $zip );
     $sth->bind_param( 2, $prams[2] );
 
     #DBI::dump_results($sth);
-    $sth->execute();
-    if ($@) {
-        $irc->yield( privmsg => $chan => "Error updating default: " . $sth->err );
+    my $rv = $sth->execute();
+    if (!$rv) {
+        $irc->yield( privmsg => $chan => "Error updating default: " . $sth->errstr );
     }
     else {
         if ( $sth->rows > 0 ) {
@@ -763,6 +781,90 @@ sub nhl_standings {
 
 }
 
+sub delchan {
+    my @prams = @_;
+    my $who   = $prams[1];
+    my $nick  = $prams[2];
+    my $umask = $prams[3];
+
+    my @args = split / /, $prams[0];
+
+    my $nacl    = acl( $nick, $umask );
+    my $channel = $args[0];
+
+    if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
+        $irc->yield( notice => $who => "No Access!" );
+        return;
+    }
+    if(!defined($channel) || $channel eq "")
+    {
+        $irc->yield(notice => $who => "delchan #channame|ID");
+        return;
+    }
+
+    my $query = q{DELETE FROM channel WHERE channame = ? OR chanid = ? };
+    
+    my $sth = $dbh->prepare($query);
+    
+    if (!$sth) {
+        $irc->yield( privmsg => $who => "Error preparing statement for delete: " . $dbh->errstr );
+    }
+    
+    $sth->bind_param(1, $args[0]);
+    $sth->bind_param(2, $args[1]);
+    
+    my $rv = $sth->execute();   
+
+    if ( !$rv ) {
+        $irc->yield( privmsg => $who => "Error deleting channel: " . $sth->errstr );
+        return;
+    }
+    if($sth->rows)
+    {
+        $irc->yield(privmsg => $who => "Channel deleted");
+        delete $chans{$channel};
+        $irc->plugin_del('AutoJoin');
+        $autojoin = $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans));
+        $irc->yield( part => $channel);
+    } else  {
+        $irc->yield(privmsg => $who => "Unable to delete channel - not found?");
+    }
+        
+
+}
+
+
+sub listchan {
+    my @prams = @_;
+    my $who = $prams[1];
+    my $nick = $prams[2];
+    my $umask = $prams[3];
+    
+    my $query = q{SELECT channame, username, chanid FROM channel, users WHERE channel.ownerid == users.userid};
+    
+    my $sth = $dbh->prepare($query);
+    if (!$sth) {
+        $irc->yield( privmsg => $who => "Error preparing statement: " . $dbh->errstr );
+    }
+    my $rv = $sth->execute();   
+
+    if ( !$rv ) {
+        $irc->yield( privmsg => $who => "Error listing channels: " . $sth->errstr );
+        return;
+    }
+    while ( defined( my $res = $sth->fetchrow_hashref ) ) {
+        my ($channame, $username, $chanid) = ($res->{'channame'}, $res->{'username'}, $res->{'chanid'});
+
+        $irc->yield(privmsg => $nick => "Channel: $channame Owner: $username ChanId: $chanid");
+    }
+    if(!$sth->rows)
+    {
+        $irc->yield(privmsg => $nick => "No channels");
+    }
+    
+}
+
+
 sub addchan {
     my @prams = @_;
     my $who   = $prams[1];
@@ -785,8 +887,8 @@ sub addchan {
     my $query = q{INSERT INTO channel (channame, ownerid, chankey) VALUES (?,  (SELECT userid FROM users WHERE username = ?), ?) };
 
     my $sth = $dbh->prepare($query);
-    if ($@) {
-        $irc->yield( privmsg => $who => "Error preparing statement: " . $@ );
+    if (!$sth) {
+        $irc->yield( privmsg => $who => "Error preparing statement: " . $dbh->errstr );
     }
     $sth->bind_param( 1, $channel );
     $sth->bind_param( 2, $owner );
@@ -878,8 +980,8 @@ sub add_user {
     my $query = q{INSERT INTO users (username, access) VALUES(?, ?)};
 
     my $sth = $dbh->prepare($query);
-    if ($@) {
-        $irc->yield( privmsg => $chan => "Error preparing insert statement for useradd: " . $@ );
+    if (!$sth) {
+        $irc->yield( privmsg => $chan => "Error preparing insert statement for useradd: " . $dbh->errstr );
         $sth->finish;
         $dbh->rollback;
         return;
@@ -896,8 +998,8 @@ sub add_user {
     }
     $query = q{INSERT INTO usermask (hostmask, userid) VALUES(?, (SELECT(userid) FROM users WHERE username = ?))};
     $sth   = $dbh->prepare($query);
-    if ($@) {
-        $irc->yield( privmsg => $chan => "Error preparing insert statement for usermask add: " . $@ );
+    if (!$sth) {
+        $irc->yield( privmsg => $chan => "Error preparing insert statement for usermask add: " . $dbh->errstr );
         $sth->finish;
         $dbh->rollback;
         return;
@@ -940,8 +1042,8 @@ sub del_user {
     my $query = q{DELETE FROM users where username = ?};
 
     my $sth = $dbh->prepare($query);
-    if ($@) {
-        $irc->yield( privmsg => $chan => "Error deleting user: " . $@ );
+    if (!$sth) {
+        $irc->yield( privmsg => $chan => "Error deleting user: " . $dbh->errstr );
         return;
     }
     $sth->bind_param( 1, $nickname );
@@ -968,11 +1070,9 @@ sub chan_acl {
     my $host;    
     
     if ( defined($hostmask) || $hostmask ne '') {
-        print "Using hostmask passed\n";
         $host = $hostmask;
     }
     else {
-        print "looking up hostmask\n";
         my $var = $irc->nick_info("$nickname");
         $host = $nickname . "!" . $var->{'Userhost'};
     }
@@ -981,13 +1081,13 @@ sub chan_acl {
 
     my $query = q{SELECT username, hostmask, chaccess from users, usermask, channel, chanuser WHERE ? GLOB usermask.hostmask AND users.userid = usermask.userid AND chanuser.chanid = channel.chanid AND channame = ?};
 
-    my $sth = $dbh->prepare($query);
+    my $sth = $dbh->prepare($query) || die("Unable to prepare ACL query: " . $dbh->errstr);
 
     #DBI::dump_results($sth);
 
     $sth->bind_param( 1, $host );
     $sth->bind_param( 2, $chan );
-    $sth->execute() || die("Unable to execute $@");
+    $sth->execute() || die("Unable to execute query " . $sth->errstr);
 
     if ( defined( my $res = $sth->fetchrow_hashref ) ) {
         if ( matches_mask( $res->{'hostmask'}, $host ) ) {
@@ -1014,23 +1114,21 @@ sub acl {
 
     my $host;
     if ( defined($hostmask) ) {
-        print "Using hostmask passed\n";
         $host = $hostmask;
     }
     else {
-        print "looking up hostmask\n";
         my $var = $irc->nick_info("$nickname");
         $host = $nickname . "!" . $var->{'Userhost'};
     }
 
     my $query = q{SELECT users.username AS username, usermask.hostmask AS hostmask, users.access AS access FROM users,usermask WHERE usermask.userid == users.userid AND  ? GLOB usermask.hostmask};
 
-    $sth = $dbh->prepare($query);
+    $sth = $dbh->prepare($query) || die("Unable to prepare ACL query: " . $dbh->errstr);
 
     #DBI::dump_results($sth);
 
     $sth->bind_param( 1, $host );
-    $sth->execute() || die("Unable to execute $@");
+    $sth->execute() || die("Unable to execute ACL query: " . $sth->errstr);
 
     if ( defined( my $res = $sth->fetchrow_hashref ) ) {
         if ( matches_mask( $res->{'hostmask'}, $host ) ) {
@@ -1114,9 +1212,8 @@ sub mod_user {
     my $query = q{UPDATE users set access = ? where username = ?};
 
     my $sth = $dbh->prepare($query);
-    if ($@) {
-        $irc->yield( privmsg => $chan => "Error preparing update statement for useradd: " . $@ );
-        $sth->finish;
+    if (!$sth) {
+        $irc->yield( privmsg => $chan => "Error preparing update statement for useradd: " . $dbh->errstr);
         $dbh->rollback;
         return;
     }
@@ -1194,12 +1291,41 @@ sub list_chanuser {
     my $umask = $prams[3];
 
     my @args = split / /, $prams[0];
+    my $lchan = $args[0];    
 
     my $nacl = acl( $nick, $umask );
 
     if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
         $irc->yield( notice => $nick => "No Access!" );
         return;
+    }
+
+    if(!defined($lchan) || $lchan eq "")
+    {
+        $irc->yield(privmsg => $nick => "Options are: listchan #channel");
+        return;
+    }
+
+    my $query = q{ SELECT username,users.userid AS userid,chaccess,channame FROM users,channel,chanuser WHERE channel.channame = ? AND channel.chanid == chanuser.chanid AND chanuser.userid == users.userid};
+    
+    my $sth = $dbh->prepare($query);
+    $sth->bind_param(1, $lchan);
+    my $rv = $sth->execute();
+    if(!$rv)
+    {
+        $irc->yield(privmsg => $nick => "Unable to list channels: " . $sth->errstr);
+    }
+    while ( defined( my $res = $sth->fetchrow_hashref ) ) {
+
+        my $uname  = $res->{'username'};
+        my $access = $res->{'chaccess'};
+        my $newchan = $res->{'channame'};
+        my $uid = $res->{'userid'};
+        $irc->yield( privmsg => $nick => "Chan: $newchan User: $uname Userid:[$uid] Access: $access" );
+
+    }
+    if(!$sth->rows) {
+        $irc->yield(privmsg => $nick => "No users found");
     }
 
 }
