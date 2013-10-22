@@ -198,7 +198,7 @@ sub irc_nick_sync {
     my $nick = ( split /!/, $umask )[0];
 
     my $acl = chan_acl( $nick, $channel );
-    my $uacl = acl($nick);
+    my $uacl = acl($nick, $umask);
 
     return if ( !defined($acl) );
 
@@ -375,8 +375,9 @@ sub weather_default {
     my @prams  = @_;
     my $zip    = $prams[0];
     my $chan   = $prams[1];
-
-    my $nacl = acl($prams[2]);
+    my $nick    = $prams[2];
+    my $who	= $prams[3];
+    my $nacl = acl($nick, $who);
 
     if ( !defined($nacl)) {
         $irc->yield( privmsg => $chan => "No Access!" );
@@ -682,7 +683,7 @@ sub help {
     my @prams = @_;
     my $chan  = $prams[1];
     my $nick  = $prams[2];
-
+    my $who   = $prams[3];
     $irc->yield( notice => $nick => "!tu <url>: Shorten a url" );
     $irc->yield( notice => $nick => "!u2 <url>: youtube info" );
     $irc->yield( notice => $nick => "!flip: coin flip" );
@@ -696,7 +697,7 @@ sub help {
     $irc->yield( notice => $nick => "!word: word scramble game" );
     $irc->yield( notice => $nick => "!moo: moo." );
 
-    my $nacl = acl($nick);
+    my $nacl = acl($nick, $who);
 
     if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
         return;
@@ -766,10 +767,11 @@ sub addchan {
     my @prams = @_;
     my $who   = $prams[1];
     my $nick  = $prams[2];
+    my $umask = $prams[3];
 
     my @args = split / /, $prams[0];
 
-    my $nacl    = acl($nick);
+    my $nacl    = acl($nick, $umask);
     my $channel = $args[0];
     my $owner   = $args[1];
 
@@ -804,10 +806,10 @@ sub add_chanuser {
     my @prams = @_;
     my $who   = $prams[1];
     my $nick  = $prams[2];
-
+    my $umask = $prams[3];
     my @args = split / /, $prams[0];
 
-    my $nacl = acl($nick);
+    my $nacl = acl($nick, $umask);
     if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
         $irc->yield( notice => $who => "No Access!" );
         return;
@@ -843,10 +845,11 @@ sub add_user {
     my @prams = @_;
     my $chan  = $prams[1];
     my $nick  = $prams[2];
+    my $umask = $prams[3];
 
     my @args = split / /, $prams[0];
 
-    my $nacl = acl($nick);
+    my $nacl = acl($nick, $umask);
 
     if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
         $irc->yield( notice => $nick => "No Access!" );
@@ -916,8 +919,9 @@ sub del_user {
     my $nickname = $prams[0];
     my $chan     = $prams[1];
     my $nick     = $prams[2];
+    my $umask	 = $prams[3];
 
-    my $nacl = acl($nick);
+    my $nacl = acl($nick, $umask);
 
     if ( !defined($nacl) || ( $nacl->{'access'} !~ 'A' ) ) {
         $irc->yield( notice => $nick => "No Access!" );
@@ -984,20 +988,24 @@ q{SELECT username, hostmask, chaccess from users, usermask, channel, chanuser WH
 }
 
 sub acl {
-
     my @prams    = @_;
     my $nickname = $prams[0];
-    my $chan     = $prams[1];
-    my $nick     = $prams[2];
+    my $hostmask     = $prams[1];
+
     my $sth;
     my $hostmask;
     my $tnick;
     my %access;
 
-    my $var = $irc->nick_info("$nickname");
-
-    my $host = $nickname . "!" . $var->{'Userhost'};
-
+    my $host; 
+    if(defined($hostmask))
+    {
+        $host = $hostmask;
+    } else {
+        my $var = $irc->nick_info("$nickname");
+        $host = $nickname . "!" . $var->{'Userhost'};
+    }
+    
     my $query = q{SELECT users.username AS username, usermask.hostmask AS hostmask, users.access AS access FROM users,usermask WHERE usermask.userid == users.userid AND  ? GLOB usermask.hostmask};
 
     $sth = $dbh->prepare($query);
@@ -1036,10 +1044,11 @@ sub check_user {
     my $nickname = $prams[0];
     my $who      = $prams[1];
     my $nick     = $prams[2];
+    my $umask 	 = $prams[3];
 
     #   print Dumper($acl);
 
-    my $nacl = acl($who);
+    my $nacl = acl($who, $umask);
 
     if ( !defined($nacl) || ( $nacl->{'access'} !~ 'O|A' ) ) {
         $irc->yield( notice => $who => "No Access!" );
@@ -1064,10 +1073,10 @@ sub mod_user {
     my @prams = @_;
     my $chan  = $prams[1];
     my $nick  = $prams[2];
-
+    my $umask = $prams[3];
     my @args = split / /, $prams[0];
 
-    my $nacl = acl($nick);
+    my $nacl = acl($nick, $umask);
 
     if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
         $irc->yield( notice => $nick => "No Access!" );
@@ -1116,10 +1125,11 @@ sub list_users {
     my @prams = @_;
     my $chan  = $prams[1];
     my $nick  = $prams[2];
+    my $umask = $prams[3];
 
     my @args = split / /, $prams[0];
 
-    my $nacl = acl($nick);
+    my $nacl = acl($nick, $umask);
 
     if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
         $irc->yield( notice => $nick => "No Access!" );
@@ -1147,10 +1157,11 @@ sub mod_chanuser {
     my @prams = @_;
     my $chan  = $prams[1];
     my $nick  = $prams[2];
+    my $umask = $prams[3];
 
     my @args = split / /, $prams[0];
 
-    my $nacl = acl($nick);
+    my $nacl = acl($nick, $umask);
 
     if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
         $irc->yield( notice => $nick => "No Access!" );
@@ -1164,10 +1175,11 @@ sub list_chanuser {
     my @prams = @_;
     my $chan  = $prams[1];
     my $nick  = $prams[2];
+    my $umask = $prams[3];
 
     my @args = split / /, $prams[0];
 
-    my $nacl = acl($nick);
+    my $nacl = acl($nick, $umask);
 
     if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
         $irc->yield( notice => $nick => "No Access!" );
