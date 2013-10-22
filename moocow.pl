@@ -183,7 +183,7 @@ sub ban_expire {
     my ( $kernel, $umask, $channel ) = @_[KERNEL,  ARG0, ARG1 ];
     print "Called ban expire event...\n";
     return;    
-#print "Expiring bans... $umask $channel\n";
+print "Expiring bans... $umask $channel\n";
 
     if ( $banexpire > 0 ) {
         my $banlist = $irc->channel_ban_list($channel);
@@ -196,7 +196,7 @@ sub ban_expire {
         }
 
     }
-    $kernel->delay('ban_expire', $banexpire);
+    $kernel->delay('ban_expire', 60);
 
     return;
 
