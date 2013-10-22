@@ -1,4 +1,22 @@
 #!/bin.bash
+
+if [ `which curl` ]; then
+    curl -L http://cpanmin.us | perl - --sudo App::cpanminus
+else
+   echo "curl not available, trying cpan"
+   if [ `which cpan` ]; then
+       cpan App::cpanminus
+   else
+       echo "curl and cpan not available, cannot install"
+       exit 1
+   fi
+fi
+
+if [ ! `which gcc` ]; then
+     echo "gcc not installed, need gcc to build modules"
+     exit 1
+fi
+   
 OLDIFS="$IFS"
 IFS=';'
 MODULES=$(egrep "^use" moocow.pl | grep -v qw  | awk '{print $2}' | egrep -v "^strict" | egrep -v "^warnings")
