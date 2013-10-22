@@ -179,13 +179,19 @@ sub irc_nick_sync {
     my $acl = chan_acl( $nick, $channel );
     my $uacl = acl($nick);
 
-    my $banlist = $irc->channel_ban_list($channel);
+    if ($banexpire > 0) {
 
-    print Dumper($banlist); 
-
-    for (keys $banlist) {
-
-        print "$banlist->{'SetAt'}";
+        my $banlist = $irc->channel_ban_list($channel);
+        print Dumper($banlist); 
+        foreach my $q (keys($banlist))
+        {
+            print "-$q- -$banlist->{$q}->{'SetAt'}-\n";
+            my $tm = time();
+            my $bantime = $tm - $banlist->{$q}->{'SetAt'};
+            if($bantime > $banexpire) {
+                $irc->yield( mode => $channel => "-b $q" );
+            } 
+        }
 
     }
 
