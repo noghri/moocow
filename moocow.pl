@@ -94,7 +94,6 @@ my $irc = POE::Component::IRC::State->spawn(
 my %cmd_hash;
 
 $cmd_hash{"flip"}      = sub { coinflip(@_); };
-$cmd_hash{"wz"}        = sub { weather(@_); };
 $cmd_hash{"entertain"} = sub { entertain(@_); };
 $cmd_hash{"quote"}     = sub { quote(@_); };
 $cmd_hash{"addquote"}  = sub { addquote(@_); };
@@ -103,7 +102,7 @@ $cmd_hash{"tu"}        = sub { gogl(@_); };
 $cmd_hash{"u2"}        = sub { youtube(@_); };
 $cmd_hash{"help"}      = sub { help(@_); };
 $cmd_hash{"codeword"}  = sub { codeword(@_); };
-$cmd_hash{"wze"}       = sub { weather_extended(@_); };
+$cmd_hash{"wz"}       = sub { weather_extended(@_); };
 $cmd_hash{"nhl"}       = sub { nhl_standings(@_); };
 $cmd_hash{"words"}     = sub { word(@_); };
 $cmd_hash{"hack"}      = sub { hack(@_); };
@@ -381,51 +380,18 @@ sub weather_extended {
     $wind =~ s/From the //;
     my $dew    = $cond->dewpoint_string;
     my $precip = $cond->precip_today_string;
+    my $forecast   = $wun->forecast->txt_forecast->forecastday->[0]{fcttext};
+
 
 #Harpers Ferry, WV; Updated: 3:00 PM EDT on October 17, 2013; Conditions: Overcast; Temperature: 71.2°F (21.8°C); UV: 1/16 Humidity: 75%; Pressure: 29.79 in/2054 hPa (Falling); Wind: SSE at 5.0 MPH (8 KPH)
     $irc->yield( privmsg => $chan =>
 "WX $location Updated: $updated Conditions: $weather: Temp: $temp Feels like: $feels Dewpoint: $dew UV: $uv Humidity: $humid: Pressure: ${pressin}/in/${pressmb} MB Wind: $wind Precip: $precip"
     );
+    $irc->yield( privmsg => $chan => "$forecast" );
 
     #    my $resp = $wun->r->full_location . "Updated: $obs"
     return;
 
-}
-
-sub weather {
-
-    my @prams  = @_;
-    my $zip    = $prams[0];
-    my $chan   = $prams[1];
-    my $apikey = readconfig('apikey');
-
-    my $wun = new WWW::Wunderground::API(
-        location => $zip,
-        api_key  => $apikey,
-        auto_api => 1,
-        cache    => Cache::FileCache->new( { namespace => 'moocow_wundercache', default_expires_in => 2400 } )
-    );
-
-    if ( $wun->response->error->description ) {
-        $irc->yield( privmsg => $chan => "No results: " . $wun->response->error->description );
-        return;
-    }
-
-    if ( $wun->response->results ) {
-        $irc->yield( privmsg => $chan => "Too many results for location $zip" );
-        return;
-    }
-
-    #    print Dumper($wun->conditions);
-    my $city       = $wun->conditions->observation_location->full;
-    my $temp       = $wun->conditions->temperature_string;
-    my $humidity   = $wun->conditions->relative_humidity;
-    my $wind_speed = $wun->conditions->wind_string;
-    my $weather    = $wun->conditions->weather;
-    my $forecast   = $wun->forecast->txt_forecast->forecastday->[0]{fcttext};
-
-    $irc->yield( privmsg => $chan => "Weather for $city: Conditions $weather Temp: $temp Humidity: $humidity Wind: $wind_speed" );
-    $irc->yield( privmsg => $chan => "$forecast" );
 }
 
 sub coinflip {
@@ -632,6 +598,7 @@ sub help {
     $irc->yield( privmsg => $nick => "!u2 <url>: youtube info" );
     $irc->yield( privmsg => $nick => "!flip: coin flip" );
     $irc->yield( privmsg => $nick => "!wz <zip>: Weather for zip" );
+    $irc->yield( privmsg => $nick => "!wzd <zip>: Adds default weather zip." );
     $irc->yield( privmsg => $nick => "!entertain: Massive entertainment." );
     $irc->yield( privmsg => $nick => "!codeword <codeword>: Special codeword actions." );
     $irc->yield( privmsg => $nick => "!quote: Display random quote" );
@@ -639,6 +606,24 @@ sub help {
     $irc->yield( privmsg => $nick => "!nhl: nhl standings" );
     $irc->yield( privmsg => $nick => "!word: word scramble game" );
     $irc->yield( privmsg => $nick => "!moo: moo." );
+
+    my $nacl = acl($nick);
+
+    if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
+        return;
+    }
+
+    $irc->yield( privmsg => $nick => "Admin Commands: (all privmsg)" );
+    $irc->yield( privmsg => $nick => "!adduser <nickname> <hostmask> <acl>" );
+    $irc->yield( privmsg => $nick => "!deluser <nickname>" );
+    $irc->yield( privmsg => $nick => "!moduser <nickname> <acl>" );
+    $irc->yield( privmsg => $nick => "!add_chanuser <channel> <nickname> <acl>" );
+    $irc->yield( privmsg => $nick => "!checkuser <ircname>" );
+    $irc->yield( privmsg => $nick => "!addchan <channel>" );
+    $irc->yield( privmsg => $nick => "!listusers" );
+    $irc->yield( privmsg => $nick => "!mod_chanuser <channel> <nickname> <acl>" );
+    $irc->yield( privmsg => $nick => "!list_chanuser <channel>" );
+  
 }
 
 sub nhl_standings {
