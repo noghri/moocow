@@ -315,14 +315,18 @@ sub quote {
     else {
         $query = $query . q{ ORDER BY RANDOM() LIMIT 1; };
         $sth   = $dbh->prepare($query);
+        if(!$sth)
+        {
+            $irc->yield(privmsg => $channel => "Error looking up quote: " . $dbh->errstr);
+            return;
+        }
         $sth->bind_param( 1, $channel );
-        warn if ($@);
     }
 
-    $sth->execute() || die("Unable to execute $@");
+    my $rv = $sth->execute();
 
-    if ($@) {
-        $irc->yield( privmsg => $channel => "Error reading quote: " . $@ );
+    if (!$rv) {
+        $irc->yield( privmsg => $channel => "Error reading quote: " . $sth->errstr );
         return;
     }
 
