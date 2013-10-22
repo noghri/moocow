@@ -251,10 +251,10 @@ sub irc_public {
     }
     if ($autourl) {
         if ( my ($youtube) = $what =~ /^(https?:\/\/(www\.youtube\.com|youtube\.com|youtu\.be)\/.*)/ ) {
-            youtube( $youtube, $channel, $nick );
+            youtube( $youtube, $channel, $nick, $who);
         }
         elsif ( my ($gogl) = $what =~ /^(https?:\/\/.*)/ ) {
-            gogl( $gogl, $channel, $nick );
+            gogl( $gogl, $channel, $nick, $who );
         }
     }
 
@@ -265,7 +265,7 @@ sub irc_public {
     my $cmd = shift @cmd;
     my $cmdargs = join( " ", @cmd );
     if ( exists $cmd_hash{$cmd} ) {
-        $cmd_hash{$cmd}->( $cmdargs, $channel, $nick );
+        $cmd_hash{$cmd}->( $cmdargs, $channel, $nick, $who );
     }
 
     return;
