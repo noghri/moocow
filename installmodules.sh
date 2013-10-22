@@ -9,6 +9,7 @@ if [ ! `which make` ]; then
     exit 1
 fi
 
+
 if [ `which curl` ]; then
     curl -L http://cpanmin.us | perl - --sudo App::cpanminus
 else
@@ -21,7 +22,13 @@ else
    fi
 fi
 
-   
+ if [ ! `pkg-config --cflags expat` ]; then
+    echo "unable to find expat header files, these are needed to compile modules"
+    echo "please installed expat header files, if they are installed, hit Y"
+    read -p "Continue (y/n)?"
+    [ "$REPLY" == "y" ] || exit 1 
+fi
+  
 OLDIFS="$IFS"
 IFS=';'
 MODULES=$(egrep "^use" moocow.pl | grep -v qw  | awk '{print $2}' | egrep -v "^strict" | egrep -v "^warnings")
