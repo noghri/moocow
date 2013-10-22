@@ -32,6 +32,8 @@ parseconfig($confpath);
 my $nickname  = readconfig('nickname');
 my $ircname   = readconfig('ircname');
 my $server    = readconfig('server');
+my $port      = readconfig('port');
+my $usessl    = readconfig('usessl');
 my $trigger   = readconfig('trigger');
 my $dbpath    = readconfig('dbpath');
 my $autourl   = readconfig('autourl');
@@ -84,6 +86,8 @@ my $irc = POE::Component::IRC::State->spawn(
     nick    => $nickname,
     ircname => $ircname,
     server  => $server,
+    Port    => $port,
+    UseSSL  => $usessl,
     Debug   => 1,
     Flood   => 0,
 ) or die "Oh noooo! $!";
@@ -112,6 +116,8 @@ $pmsg_cmd_hash{"checkuser"} = sub { check_user(@_); };
 
 $pmsg_cmd_hash{"addchan"}      = sub { addchan(@_); };
 $pmsg_cmd_hash{"add_chanuser"} = sub { add_chanuser(@_); };
+$pmsg_cmd_hash{"delchan"}      = sub { delchan(@_); };
+$pmsg_cmd_hash{"listchan"}      = sub { listchan(@_); };
 
 $pmsg_cmd_hash{"moduser"}       = sub { mod_user(@_); };
 $pmsg_cmd_hash{"listusers"}     = sub { list_users(@_); };
@@ -175,8 +181,9 @@ sub irc_001 {
 sub ban_expire {
 
     my ( $kernel, $umask, $channel ) = @_[KERNEL,  ARG0, ARG1 ];
-    
-print "Expiring bans... $umask $channel\n";
+    return;    
+#print "Expiring bans... $umask $channel\n";
+
     if ( $banexpire > 0 ) {
         my $banlist = $irc->channel_ban_list($channel);
         foreach my $q ( keys($banlist) ) {
@@ -772,6 +779,90 @@ sub nhl_standings {
     }
 
 }
+
+sub delchan {
+    my @prams = @_;
+    my $who   = $prams[1];
+    my $nick  = $prams[2];
+    my $umask = $prams[3];
+
+    my @args = split / /, $prams[0];
+
+    my $nacl    = acl( $nick, $umask );
+    my $channel = $args[0];
+
+    if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
+        $irc->yield( notice => $who => "No Access!" );
+        return;
+    }
+    if(!defined($channel) || $channel eq "")
+    {
+        $irc->yield(notice => $who => "delchan #channame|ID");
+        return;
+    }
+
+    my $query = q{DELETE FROM channel WHERE channame = ? OR chanid = ? };
+    
+    my $sth = $dbh->prepare($query);
+    
+    if (!$sth) {
+        $irc->yield( privmsg => $who => "Error preparing statement for delete: " . $dbh->errstr );
+    }
+    
+    $sth->bind_param(1, $args[0]);
+    $sth->bind_param(2, $args[1]);
+    
+    my $rv = $sth->execute();   
+
+    if ( !$rv ) {
+        $irc->yield( privmsg => $who => "Error deleting channel: " . $sth->errstr );
+        return;
+    }
+    if($sth->rows)
+    {
+        $irc->yield(privmsg => $who => "Channel deleted");
+        delete $chans{$channel};
+        $irc->plugin_del('AutoJoin');
+        $autojoin = $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans));
+        $irc->yield( part => $channel);
+    } else  {
+        $irc->yield(privmsg => $who => "Unable to delete channel - not found?");
+    }
+        
+
+}
+
+
+sub listchan {
+    my @prams = @_;
+    my $who = $prams[1];
+    my $nick = $prams[2];
+    my $umask = $prams[3];
+    
+    my $query = q{SELECT channame, username, chanid FROM channel, users WHERE channel.ownerid == users.userid};
+    
+    my $sth = $dbh->prepare($query);
+    if (!$sth) {
+        $irc->yield( privmsg => $who => "Error preparing statement: " . $dbh->errstr );
+    }
+    my $rv = $sth->execute();   
+
+    if ( !$rv ) {
+        $irc->yield( privmsg => $who => "Error listing channels: " . $sth->errstr );
+        return;
+    }
+    while ( defined( my $res = $sth->fetchrow_hashref ) ) {
+        my ($channame, $username, $chanid) = ($res->{'channame'}, $res->{'username'}, $res->{'chanid'});
+
+        $irc->yield(privmsg => $nick => "Channel: $channame Owner: $username ChanId: $chanid");
+    }
+    if(!$sth->rows)
+    {
+        $irc->yield(privmsg => $nick => "No channels");
+    }
+    
+}
+
 
 sub addchan {
     my @prams = @_;
