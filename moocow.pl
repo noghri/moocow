@@ -181,6 +181,7 @@ sub irc_001 {
 sub ban_expire {
 
     my ( $kernel, $umask, $channel ) = @_[KERNEL,  ARG0, ARG1 ];
+    print "Called ban expire event...\n";
     return;    
 #print "Expiring bans... $umask $channel\n";
 
@@ -1069,11 +1070,9 @@ sub chan_acl {
     my $host;    
     
     if ( defined($hostmask) || $hostmask ne '') {
-        print "Using hostmask passed\n";
         $host = $hostmask;
     }
     else {
-        print "looking up hostmask\n";
         my $var = $irc->nick_info("$nickname");
         $host = $nickname . "!" . $var->{'Userhost'};
     }
@@ -1115,11 +1114,9 @@ sub acl {
 
     my $host;
     if ( defined($hostmask) ) {
-        print "Using hostmask passed\n";
         $host = $hostmask;
     }
     else {
-        print "looking up hostmask\n";
         my $var = $irc->nick_info("$nickname");
         $host = $nickname . "!" . $var->{'Userhost'};
     }
@@ -1294,12 +1291,41 @@ sub list_chanuser {
     my $umask = $prams[3];
 
     my @args = split / /, $prams[0];
+    my $lchan = $args[0];    
 
     my $nacl = acl( $nick, $umask );
 
     if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
         $irc->yield( notice => $nick => "No Access!" );
         return;
+    }
+
+    if(!defined($lchan) || $lchan eq "")
+    {
+        $irc->yield(privmsg => $nick => "Options are: listchan #channel");
+        return;
+    }
+
+    my $query = q{ SELECT username,users.userid AS userid,chaccess,channame FROM users,channel,chanuser WHERE channel.channame = ? AND channel.chanid == chanuser.chanid AND chanuser.userid == users.userid};
+    
+    my $sth = $dbh->prepare($query);
+    $sth->bind_param(1, $lchan);
+    my $rv = $sth->execute();
+    if(!$rv)
+    {
+        $irc->yield(privmsg => $nick => "Unable to list channels: " . $sth->errstr);
+    }
+    while ( defined( my $res = $sth->fetchrow_hashref ) ) {
+
+        my $uname  = $res->{'username'};
+        my $access = $res->{'chaccess'};
+        my $newchan = $res->{'channame'};
+        my $uid = $res->{'userid'};
+        $irc->yield( privmsg => $nick => "Chan: $newchan User: $uname Userid:[$uid] Access: $access" );
+
+    }
+    if(!$sth->rows) {
+        $irc->yield(privmsg => $nick => "No users found");
     }
 
 }
