@@ -249,7 +249,6 @@ sub irc_ctcp_version {
     return;
 }
 
-# We registered for all events, this will produce some debug info.
 sub _default {
     return;
     my ( $event, $args ) = @_[ ARG0 .. $#_ ];
