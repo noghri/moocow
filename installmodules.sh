@@ -1,23 +1,33 @@
-#!/bin/bash
-curl -L http://cpanmin.us | perl - --sudo App::cpanminus
+#!/bin.bash
+OLDIFS="$IFS"
+IFS=';'
+MODULES=$(egrep "^use" moocow.pl | grep -v qw  | awk '{print $2}' | egrep -v "^strict" | egrep -v "^warnings")
+IFS="$OLDIFS"
+MODULES=(${MODULES})
 
-declare -a IRCMODS=('Component::IRC' 'Component::IRC::State' 'Component::IRC::Plugin::AutoJoin' 'Component::IRC::Plugin::Connector' 'Component::IRC::Plugin::NickReclaim' 'Component::IRC::Plugin::CTCP');
+BASEMODULES=$(egrep "use .* qw" moocow.pl)
+BASEMODULES=(${BASEMODULES})
 
-for var in "${IRCMODS[@]}"
+
+for var in "${MODULES[@]}"
 do
-    echo "cpanm --sudo POE::${var}"
+    echo "cpanm --sudo ${var//;/}"
 done
 
-cpmann --sudo Getopt::Std;
-cpmann --sudo WebService::GData::YouTube;
-cpmann --sudo DBI;
-cpmann --sudo POSIX;
-cpmann --sudo Config::Any;
-cpmann --sudo Config::Any::INI;
-cpmann --sudo Cache::FileCache;
-cpmann --sudo WWW::Wunderground::API;
-cpmann --sudo Data::Dumper;
-cpmann --sudo HTML::TableExtract;
-cpmann --sudo LWP::UserAgent::WithCache;
-cpmann --sudo IRC::Utils;
-
+CURBASE=""
+for var in "${BASEMODULES[@]}"
+do
+    var="${var//use/}"
+    var="${var//qw(/}"
+    var="${var//)/}"
+    var="${var//\n/}"
+    IFS=' ' read -a newarr <<< "${var}"
+    if [  "${var}" ]; then
+       if ! grep -q "::" <<<${var}; then
+           CURBASE=${var}
+           echo "cpanm --sudo ${var}"
+       else
+          echo "cpanm --sudo $CURBASE::${var}"
+       fi
+    fi
+done
