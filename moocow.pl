@@ -32,7 +32,6 @@ parseconfig($confpath);
 my $nickname = readconfig('nickname');
 my $ircname  = readconfig('ircname');
 my $server   = readconfig('server');
-#my $channels = readconfig('channels');
 my $trigger  = readconfig('trigger');
 my $dbpath   = readconfig('dbpath');
 my $autourl  = readconfig('autourl');
@@ -103,6 +102,7 @@ $cmd_hash{"u2"}        = sub { youtube(@_); };
 $cmd_hash{"help"}      = sub { help(@_); };
 $cmd_hash{"codeword"}  = sub { codeword(@_); };
 $cmd_hash{"wz"}       = sub { weather_extended(@_); };
+$cmd_hash{"wzd"}       = sub { weather_default(@_); };
 $cmd_hash{"nhl"}       = sub { nhl_standings(@_); };
 $cmd_hash{"words"}     = sub { word(@_); };
 $cmd_hash{"hack"}      = sub { hack(@_); };
@@ -342,11 +342,72 @@ sub addquote {
     }
 }
 
+sub weather_default {
+
+    my @prams  = @_;
+    my $zip    = $prams[0];
+    my $chan   = $prams[1];
+
+    my $nacl = acl($prams[2]);
+
+    if ( !defined($nacl)) {
+        $irc->yield( privmsg => $chan => "No Access!" );
+        return;
+    }
+
+    if ( $zip eq "" ) { return }
+
+    my $query = q{UPDATE users set wzdefault = ? where username = ?};
+
+    my $sth   = $dbh->prepare($query);
+    if ($@) {
+        $irc->yield( privmsg => $chan => "Error updating default: " . $@ );
+        return;
+    }
+    $sth->bind_param( 1, $zip );
+    $sth->bind_param( 2, $prams[2] );
+
+    #DBI::dump_results($sth);
+    $sth->execute();
+    if ($@) {
+        $irc->yield( privmsg => $chan => "Error updating default: " . $sth->err );
+    }
+    else {
+        if ( $sth->rows > 0 ) {
+            $irc->yield( privmsg => $chan => "Default updated." );
+        }
+
+    }
+
+}
+
 sub weather_extended {
     my @prams  = @_;
     my $zip    = $prams[0];
     my $chan   = $prams[1];
     my $apikey = readconfig('apikey');
+
+    if($zip eq "") {
+
+       my $query = q{SELECT wzdefault FROM users WHERE username = ?};
+       my $sth = $dbh->prepare($query);
+    if ($@) {
+        $irc->yield( privmsg => $chan => "Use !wzd to set a default zip.");
+        return;
+    }
+    $sth->bind_param( 1, $prams[2] );
+    $sth->execute();
+    if ($@) {
+        $irc->yield( privmsg => $chan => "Use !wzd to set a default zip");
+    }
+    else {
+        if ( defined( my $res = $sth->fetchrow_hashref ) ) {
+            $zip = $res->{'wzdefault'};
+        }
+    }
+ 
+
+    }
 
     my $wun = new WWW::Wunderground::API(
         location => $zip,
