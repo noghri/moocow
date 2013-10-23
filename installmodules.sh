@@ -56,11 +56,12 @@ do
     if [  "${var}" ]; then
        if ! grep -q "::" <<<${var}; then
            CURBASE=${var}
-           cpanm --sudo -n ${var}
+           cpanm --sudo  ${var}
        else
-           cpanm --sudo -n $CURBASE::${var}
+           cpanm --sudo  $CURBASE::${var}
        fi
     fi
 done
-cpanm --sudo -n Config::Tiny
-cpanm --sudo -n DBD::SQLite
+cpanm --sudo  Config::Tiny
+cpanm --sudo  DBD::SQLite
+cpanm --sudo  -f LWP::UserAgent::WithCache
