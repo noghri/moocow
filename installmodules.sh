@@ -1,4 +1,4 @@
-#!/bin.bash
+#!/bin/bash
 if [ ! `which gcc` ]; then
      echo "gcc not installed, need gcc to build modules"
      exit 1
@@ -21,8 +21,9 @@ else
        exit 1
    fi
 fi
-
- if [ ! `pkg-config --cflags expat` ]; then
+pkg-config  --cflags expata > /dev/null
+expat_exists=$?
+ if [ $expat_exists -ne 0 ]; then
     echo "unable to find expat header files, these are needed to compile modules"
     echo "please installed expat header files, if they are installed, hit Y"
     read -p "Continue (y/n)?"
