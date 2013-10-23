@@ -21,7 +21,7 @@ else
        exit 1
    fi
 fi
-pkg-config  --cflags expata > /dev/null
+pkg-config  --cflags expat > /dev/null
 expat_exists=$?
  if [ $expat_exists -ne 0 ]; then
     echo "unable to find expat header files, these are needed to compile modules"
