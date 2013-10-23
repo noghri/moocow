@@ -62,3 +62,5 @@ do
        fi
     fi
 done
+cpanm --sudo -n Config::Tiny
+cpanm --sudo -n DBD::SQLite
