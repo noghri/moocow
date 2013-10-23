@@ -158,7 +158,7 @@ sub _start {
         )
     );
 
-    $kernel->delay('ban_expire', $banexpire);
+    $kernel->delay('ban_expire', 60);
     $irc->yield( register => 'all' );
     $irc->yield( connect  => {} );
 
@@ -181,21 +181,21 @@ sub irc_001 {
 sub ban_expire {
 
     my ( $kernel, $umask, $channel ) = @_[KERNEL,  ARG0, ARG1 ];
-    print "Called ban expire event...\n";
-    return;    
-print "Expiring bans... $umask $channel\n";
 
-    if ( $banexpire > 0 ) {
-        my $banlist = $irc->channel_ban_list($channel);
-        foreach my $q ( keys($banlist) ) {
-            my $tm      = time();
-            my $bantime = $tm - $banlist->{$q}->{'SetAt'};
-            if ( $bantime > $banexpire ) {
-                $irc->yield( mode => $channel => "-b $q" );
+    for my $channel ( keys %{ $irc->channels() } ) {
+        if ( $banexpire > 0 ) {
+            my $banlist = $irc->channel_ban_list($channel);
+            foreach my $q ( keys($banlist) ) {
+                my $tm      = time();
+                my $bantime = $tm - $banlist->{$q}->{'SetAt'};
+                if ( $bantime > $banexpire ) {
+                    $irc->yield( mode => $channel => "-b $q" );
+                }
             }
-        }
 
+        }
     }
+
     $kernel->delay('ban_expire', 60);
 
     return;
