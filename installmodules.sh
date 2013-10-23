@@ -32,11 +32,11 @@ fi
   
 OLDIFS="$IFS"
 IFS=';'
-MODULES=$(egrep "^use" moocow.pl | grep -v qw  | awk '{print $2}' | egrep -v "^strict" | egrep -v "^warnings")
+MODULES=$(grep "^use" moocow.pl | grep -v qw  | awk '{print $2}' | grep -v "^strict" | grep -v "^warnings")
 IFS="$OLDIFS"
 MODULES=(${MODULES})
 
-BASEMODULES=$(egrep "use .* qw" moocow.pl)
+BASEMODULES=$(grep "use .* qw" moocow.pl)
 BASEMODULES=(${BASEMODULES})
 
 
@@ -56,9 +56,9 @@ do
     if [  "${var}" ]; then
        if ! grep -q "::" <<<${var}; then
            CURBASE=${var}
-           cpanm --sudo ${var}
+           cpanm --sudo -n ${var}
        else
-           cpanm --sudo $CURBASE::${var}
+           cpanm --sudo -n $CURBASE::${var}
        fi
     fi
 done
