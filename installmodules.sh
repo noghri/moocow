@@ -1,4 +1,4 @@
-#!/bin.bash
+#!/bin/bash
 if [ ! `which gcc` ]; then
      echo "gcc not installed, need gcc to build modules"
      exit 1
@@ -21,8 +21,9 @@ else
        exit 1
    fi
 fi
-
- if [ ! `pkg-config --cflags expat` ]; then
+pkg-config  --cflags expat > /dev/null
+expat_exists=$?
+ if [ $expat_exists -ne 0 ]; then
     echo "unable to find expat header files, these are needed to compile modules"
     echo "please installed expat header files, if they are installed, hit Y"
     read -p "Continue (y/n)?"
@@ -31,11 +32,11 @@ fi
   
 OLDIFS="$IFS"
 IFS=';'
-MODULES=$(egrep "^use" moocow.pl | grep -v qw  | awk '{print $2}' | egrep -v "^strict" | egrep -v "^warnings")
+MODULES=$(grep "^use" moocow.pl | grep -v qw  | awk '{print $2}' | grep -v "^strict" | grep -v "^warnings")
 IFS="$OLDIFS"
 MODULES=(${MODULES})
 
-BASEMODULES=$(egrep "use .* qw" moocow.pl)
+BASEMODULES=$(grep "use .* qw" moocow.pl)
 BASEMODULES=(${BASEMODULES})
 
 
@@ -55,9 +56,12 @@ do
     if [  "${var}" ]; then
        if ! grep -q "::" <<<${var}; then
            CURBASE=${var}
-           cpanm --sudo ${var}
+           cpanm --sudo  ${var}
        else
-           cpanm --sudo $CURBASE::${var}
+           cpanm --sudo  $CURBASE::${var}
        fi
     fi
 done
+cpanm --sudo  Config::Tiny
+cpanm --sudo  DBD::SQLite
+cpanm --sudo  -f LWP::UserAgent::WithCache

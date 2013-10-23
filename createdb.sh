@@ -1,22 +1,21 @@
 #!/bin/sh
-
-if [ -z $1 ]; then
-    echo "Please pass the filename where the database will be stored"
-    exit 1
+FILENAME=$1
+if [ -z $FILENAME ]; then
+       FILENAME="moocow.db"
 fi
 
-if [ -f $1 ]; then
+if [ -f $FILENAME ]; then
 	echo "File $1 exists, do you which to overwrite? Y/N"
 	read YN 
 	if [ x$YN != 'xY' ]; then
 		echo "Got $YN aborting..."
 		exit 1
 	fi
-	rm $1
+	rm $FILENAME
 fi
 
 
-sqlite3 $1 <<EOF
+sqlite3 $FILENAME <<EOF
 	CREATE TABLE quotes (quote, timestamp, usermask, channel, quoteid integer primary key autoincrement);
 	CREATE TABLE users (username unique, access, wzdefault , userid integer primary key autoincrement);
 	CREATE TABLE usermask (hostmask, userid integer not null, foreign key(userid) REFERENCES users(userid) ON DELETE CASCADE);
