@@ -1354,44 +1354,37 @@ sub del_chanuser {
         return;
     }
 
-    my $query = q{ SELECT username,users.userid AS userid,chaccess,channame FROM users,channel,chanuser WHERE channel.channame = ? AND channel.chanid == chanuser.chanid AND chanuser.userid == users.userid};
+    my $query = q{DELETE FROM chanuser WHERE chanuser.userid = (SELECT users.userid FROM users,channel,chanuser WHERE channel.channame = ? AND (users.userid = ? OR users.username = ?) AND channel.chanid == chanuser.chanid AND chanuser.userid == users.userid)};
 
-    my $sth = $dbh->prepare($query);
+    $sth = $dbh->prepare($query);
+    
+    
+    if(!$sth)
+    {
+        $irc->yield( privmsg => $nick => "Error preparing statement to delete chanuser: " .  $dbh->errstr);
+        return;
+    }
+    
     $sth->bind_param(1, $lchan);
+    $sth->bind_param(2, $lnick);
+    $sth->bind_param(3, $lnick);
+    
+    
+    
     my $rv = $sth->execute();
     if(!$rv)
-    {   
-        $irc->yield(privmsg => $nick => "Unable query: " . $sth->errstr);
-    }
-    while ( defined( my $res = $sth->fetchrow_hashref ) ) {
-
-        my $uname  = $res->{'username'};
-
-        if($uname eq $lnick) {
-            $uid = $res->{'userid'};
-        }
-
-    }
-    if(!$sth->rows) {
-        $irc->yield(privmsg => $nick => "No users found");
-    }
-
-    $dbh->begin_work();
-
-    $query = q{ DELETE FROM chanuser WHERE chuserid = ? };
-    $sth = $dbh->prepare($query);
-    $sth->bind_param(1, $uid);
-    my $rv2 = $sth->execute();
-    if(!$rv2)
     {
-        $irc->yield(privmsg => $nick => "Unable to delete");
+        $irc->yield(privmsg => $nick => "Unable to delete chanuser:" . $sth->errstr);
         return;
     }
  
-    $dbh->commit;
     if ( $sth->rows > 0 ) {
-        $irc->yield( privmsg => $chan => "User has been deleted." );
-    }
+        $irc->yield( privmsg => $nick => "User has been deleted." );
+        return;
+     } else {
+         $irc->yield( privmsg => $nick => "User not found?");
+         return;
+     }
 
     return;
     
