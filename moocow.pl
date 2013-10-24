@@ -21,7 +21,7 @@ use LWP::Simple;
 use Encode qw(encode_utf8);
 use Date::Manip;
 
-use constant { MOOVER => q{ $Id$ } };
+use constant { MOOVER => q{$Id$} };
 
 $Config::Any::INI::MAP_SECTION_SPACE_TO_NESTED_KEY = 0;
 
@@ -163,7 +163,7 @@ sub _start {
     $irc->plugin_add(
         'CTCP',
         POE::Component::IRC::Plugin::CTCP->new(
-            version    => "moocow 0.01 - its perl!",
+            version    => "moocow " . MOOVER . " - its perl!",
             userinfo   => "I am a cow, not a user!",
             clientinfo => "moocow - its perl!",
             source     => "grass"
