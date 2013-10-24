@@ -1092,7 +1092,6 @@ sub chan_acl {
 
     my $res = $sth->fetchrow_hashref;
     if ( defined($res)) {
-        print "hostmask: " . $res->{'hostmask'} . "Host: " . $host . "\n";
         if ( matches_mask( $res->{'hostmask'}, $host ) ) {
             $access{'hostmask'} = $res->{'hostmask'};
             $access{'username'} = $res->{'username'};
