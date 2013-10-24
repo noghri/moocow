@@ -1445,136 +1445,136 @@ sub list_chanuser {
 }
 
 sub addrss {
-my @prams = @_;
-my $chan  = $prams[1];
-my $nick = $prams[2];
-my @args = split / /, $prams[0];
-my $rssname = $args[0];
-my $rssurl = $args[1];
-
-my $xml = get($rssurl);
-if (check_if_feed_exists($nick, $rssurl) == 1) {
-        my $rp = new XML::RSS::Parser::Lite;
-        $rp->parse($xml);
-        binmode STDOUT, ":utf8";
-        for (my $i = 0; $i < $rp->count(); $i++) {
-                my $it = $rp->get($i);
-                my $title=encode_utf8($it->get('title'));
-                my $pubdate=encode_utf8($it->get('pubDate'));
-                my $link = $it->get('url');
-                if (title_exists_in_db($nick, $title, $pubdate)==1){
-                    add_title_to_db($nick, $title, $pubdate, $rssurl, $link, $rssname);
-                }
-        }
-     $irc->yield( privmsg => $nick => "added successfully");
-  }
-else {
- $irc->yield( privmsg => $nick => "feed $rssurl already exists\n");
- }
-
+    my @prams = @_;
+    my $chan  = $prams[1];
+    my $nick = $prams[2];
+    my @args = split / /, $prams[0];
+    my $rssname = $args[0];
+    my $rssurl = $args[1];
+    
+    my $xml = get($rssurl);
+    if (check_if_feed_exists($nick, $rssurl) == 1) {
+            my $rp = new XML::RSS::Parser::Lite;
+            $rp->parse($xml);
+            binmode STDOUT, ":utf8";
+            for (my $i = 0; $i < $rp->count(); $i++) {
+                    my $it = $rp->get($i);
+                    my $title=encode_utf8($it->get('title'));
+                    my $pubdate=encode_utf8($it->get('pubDate'));
+                    my $link = $it->get('url');
+                    if (title_exists_in_db($nick, $title, $pubdate)==1){
+                        add_title_to_db($nick, $title, $pubdate, $rssurl, $link, $rssname);
+                    }
+            }
+         $irc->yield( privmsg => $nick => "added successfully");
+      }
+    else {
+     $irc->yield( privmsg => $nick => "feed $rssurl already exists\n");
+     }
+    
 }
 
 sub title_exists_in_db {
-my @prams = @_;
-my $nick = $prams[0];
-my $title = $prams[1];
-my $pubdate = $prams[2];
-my $query = q{SELECT nick from rssfeeds where nick = ? and title GLOB  ? and pubdate = ?};
-my $sth = $dbh->prepare($query);
-$sth->bind_param( 1, $nick );
-$sth->bind_param(2, $title );
-$sth->bind_param(3, UnixDate(ParseDate($pubdate ), "%Y-%m-%d %H:%M:%S"));
-$sth->execute() || die "Error: cannot get rss feeds " . $sth->errstr; 
-if( $sth->fetch) {
-return 0;
-}
-else
-{
-return 1;
-}
-}
-sub check_if_feed_exists {
-my @prams = @_;
-my $nick = $prams[0];
-my $rssurl = $prams[1];
-my $query = q{SELECT * from rssfeeds where nick = ? and feedurl  GLOB  ?};
-my $sth = $dbh->prepare($query);
-$sth->bind_param( 1, $nick );
-$sth->bind_param(2, $rssurl );
-$sth->execute() || die "Error: cannot get rss feeds " . $sth->errstr; 
-if( $sth->fetch) {
-return 0;
-}
-else
-{
-return 1;
-}
-}
-
-sub add_title_to_db {
-my @prams = @_;
-my $nick = $prams[0];
-my $title = $prams[1];
-my $pubdate = $prams[2];
-my $rssfeed = $prams[3];
-my $link = $prams[4];
-my $rssname = $prams[5];
-my $query = q{INSERT into rssfeeds (nick, title, pubdate, feedurl, isread , link, feedname) VALUES(?, ?, ?, ?, ?, ?, ?)};
-my $sth = $dbh->prepare($query);
-$sth->bind_param( 1, $nick );
-$sth->bind_param(2, $title );
-$sth->bind_param(3, UnixDate(ParseDate($pubdate ), "%Y-%m-%d %H:%M:%S"));
-$sth->bind_param(4, $rssfeed );
-$sth->bind_param(5, 0 );
-$sth->bind_param(6, $link );
-$sth->bind_param(7, $rssname );
-
-my $rv = $sth->execute() || die "Error: cannot get rss feeds " . $sth->errstr; 
-if ( !$rv ) {
-print "error inserting feed database";
-}
-else {
-    if ($sth->rows > 0) {
+    my @prams = @_;
+    my $nick = $prams[0];
+    my $title = $prams[1];
+    my $pubdate = $prams[2];
+    my $query = q{SELECT nick from rssfeeds where nick = ? and title GLOB  ? and pubdate = ?};
+    my $sth = $dbh->prepare($query);
+    $sth->bind_param( 1, $nick );
+    $sth->bind_param(2, $title );
+    $sth->bind_param(3, UnixDate(ParseDate($pubdate ), "%Y-%m-%d %H:%M:%S"));
+    $sth->execute() || die "Error: cannot get rss feeds " . $sth->errstr; 
+    if( $sth->fetch) {
+    return 0;
+    }
+    else
+    {
+    return 1;
     }
 }
+sub check_if_feed_exists {
+    my @prams = @_;
+    my $nick = $prams[0];
+    my $rssurl = $prams[1];
+    my $query = q{SELECT * from rssfeeds where nick = ? and feedurl  GLOB  ?};
+    my $sth = $dbh->prepare($query);
+    $sth->bind_param( 1, $nick );
+    $sth->bind_param(2, $rssurl );
+    $sth->execute() || die "Error: cannot get rss feeds " . $sth->errstr; 
+    if( $sth->fetch) {
+    return 0;
+    }
+    else
+    {
+    return 1;
+    }
+    }
+
+sub add_title_to_db {
+    my @prams = @_;
+    my $nick = $prams[0];
+    my $title = $prams[1];
+    my $pubdate = $prams[2];
+    my $rssfeed = $prams[3];
+    my $link = $prams[4];
+    my $rssname = $prams[5];
+    my $query = q{INSERT into rssfeeds (nick, title, pubdate, feedurl, isread , link, feedname) VALUES(?, ?, ?, ?, ?, ?, ?)};
+    my $sth = $dbh->prepare($query);
+    $sth->bind_param( 1, $nick );
+    $sth->bind_param(2, $title );
+    $sth->bind_param(3, UnixDate(ParseDate($pubdate ), "%Y-%m-%d %H:%M:%S"));
+    $sth->bind_param(4, $rssfeed );
+    $sth->bind_param(5, 0 );
+    $sth->bind_param(6, $link );
+    $sth->bind_param(7, $rssname );
+    
+    my $rv = $sth->execute() || die "Error: cannot get rss feeds " . $sth->errstr; 
+    if ( !$rv ) {
+        $irc->yield( privmsg => $nick => "error inserting feed database");
+       }
+    else {
+        if ($sth->rows > 0) {
+        }
+    }
 }
 
 sub getrss {
-my @prams = @_;
-my $nick = $prams[2];
-my @args = split / /, $prams[0];                                               
-my $rssname = $args[0];
-my $limit = $args[1];      
-if (!$limit) {
-$limit=5;
-}     
-my $query = q{SELECT titleid, title, link  from rssfeeds where nick = ? and feedname = ? and isread=0 order by pubdate DESC LIMIT ?};
-my $sth = $dbh->prepare($query);
-$sth->bind_param( 1, $nick );
-$sth->bind_param( 2, $rssname );
-$sth->bind_param( 3, $limit );
-$sth->execute() || die "Error: cannot get rss feeds " . $sth->errstr; 
-while ( defined( my $res = $sth->fetchrow_hashref ) )
-{
-  $irc->yield( privmsg => $nick => "$res->{'title'}");
-  $irc->yield( privmsg => $nick => "$res->{'link'}");
-  markrssasread( $res->{'titleid'});
-
-}
-
+    my @prams = @_;
+    my $nick = $prams[2];
+    my @args = split / /, $prams[0];                                               
+    my $rssname = $args[0];
+    my $limit = $args[1];      
+    if (!$limit) {
+    $limit=5;
+    }     
+    my $query = q{SELECT titleid, title, link  from rssfeeds where nick = ? and feedname = ? and isread=0 order by pubdate DESC LIMIT ?};
+    my $sth = $dbh->prepare($query);
+    $sth->bind_param( 1, $nick );
+    $sth->bind_param( 2, $rssname );
+    $sth->bind_param( 3, $limit );
+    $sth->execute() || die "Error: cannot get rss feeds " . $sth->errstr; 
+    while ( defined( my $res = $sth->fetchrow_hashref ) )
+    {
+      $irc->yield( privmsg => $nick => "$res->{'title'}");
+      $irc->yield( privmsg => $nick => "$res->{'link'}");
+      markrssasread( $res->{'titleid'});
+    
+    }
+    
 }
 
 sub markrssasread {
-my @prams = @_;
-my $titleid = $prams[0];
-
-my $query = q{UPDATE rssfeeds SET isread=1 where titleid = ?};
-my $sth = $dbh->prepare($query);
-$sth->bind_param( 1, $titleid );
-
-
-my $rv = $sth->execute() || die "Error: cannot get rss feeds " . $sth->errstr; 
-if ( !$rv ) {
-print "error inserting feed database";
-}
+    my @prams = @_;
+    my $titleid = $prams[0];
+    
+    my $query = q{UPDATE rssfeeds SET isread=1 where titleid = ?};
+    my $sth = $dbh->prepare($query);
+    $sth->bind_param( 1, $titleid );
+    
+    
+    my $rv = $sth->execute() || die "Error: cannot get rss feeds " . $sth->errstr; 
+    if ( !$rv ) {
+    print "error inserting feed database";
+    }
 }
