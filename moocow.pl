@@ -410,7 +410,7 @@ sub weather_default {
         return;
     }
     $sth->bind_param( 1, $zip );
-    $sth->bind_param( 2, $prams[2] );
+    $sth->bind_param( 2, $who );
 
     #DBI::dump_results($sth);
     my $rv = $sth->execute();
