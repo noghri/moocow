@@ -1,4 +1,6 @@
 #!/bin/bash
+
+ 
 if [ ! `which gcc` ]; then
      echo "gcc not installed, need gcc to build modules"
      exit 1
@@ -38,11 +40,17 @@ MODULES=(${MODULES})
 
 BASEMODULES=$(grep "use .* qw" moocow.pl)
 BASEMODULES=(${BASEMODULES})
-
+if [ `uname` == "Darwin" ]; then
+    echo "DARWIN!"
+PERLVERSION=$(perl -v | grep -o "v[0-9]\.*[0-9]*" | cut -c 2-)
+CPANM="/opt/local/libexec/perl$PERLVERSION/sitebin/cpanm"
+else
+    CPANM=`which cpanm`
+fi
 
 for var in "${MODULES[@]}"
 do
-    cpanm --sudo ${var//;/}
+    $CPANM --sudo ${var//;/}
 done
 
 CURBASE=""
@@ -56,12 +64,12 @@ do
     if [  "${var}" ]; then
        if ! grep -q "::" <<<${var}; then
            CURBASE=${var}
-           cpanm --sudo  ${var}
+           $CPANM --sudo  ${var}
        else
-           cpanm --sudo  $CURBASE::${var}
+           $CPANM --sudo  $CURBASE::${var}
        fi
     fi
 done
-cpanm --sudo  Config::Tiny
-cpanm --sudo  DBD::SQLite
-cpanm --sudo  -f LWP::UserAgent::WithCache
+$CPANM --sudo  Config::Tiny
+$CPANM --sudo  DBD::SQLite
+$CPANM --sudo  -f LWP::UserAgent::WithCache
