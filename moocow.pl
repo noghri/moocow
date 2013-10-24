@@ -21,7 +21,7 @@ use LWP::Simple;
 use Encode qw(encode_utf8);
 use Date::Manip;
 
-use constant { MOOVER => q{$Id$} };
+use constant { MOOVER => q{ $Id$ } };
 
 $Config::Any::INI::MAP_SECTION_SPACE_TO_NESTED_KEY = 0;
 
