@@ -13,6 +13,7 @@ use Cache::FileCache;
 use WWW::Wunderground::API;
 use Data::Dumper;
 use HTML::TableExtract;
+use HTML::HeadParser;
 use LWP::UserAgent::WithCache;
 use IRC::Utils ':ALL';
 
@@ -625,15 +626,13 @@ sub title {
     $ua->timeout(10);
     my $req = HTTP::Request->new( GET => $url );
     my $res = $ua->request($req);
+    my $ctype = $res->header('Content-type');
 
-    my @data = split /\n/, $res->content;
-    foreach my $line (@data) {
-        if ( my ($title) = $line =~ m/<title>([a-zA-Z\/][^>]+)<\/title>/si ) {
-            return ($title);
-        }
+    return undef if(!($ctype =~ /text\/(html|xhtml)/));
 
-    }
-    return undef;
+    my $p = HTML::HeadParser->new;
+    $p->parse($res->content);
+    return($p->header('Title'));
 }
 
 sub youtube {
