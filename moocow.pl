@@ -739,14 +739,17 @@ sub nhl_standings {
     return if ( $division eq "" );
 
     $division = lc($division);
+    $division = "metropolitan" if($division eq "patrick");
 
     if (   ( $division ne "atlantic" )
         && ( $division ne "pacific" )
         && ( $division ne "central" )
         && ( $division ne "metropolitan" ) )
     {
+        $irc->yield(notice => $nick => "You must not know about the new divisions or something!");
         return;
     }
+    
 
     my $url = "http://www.nhl.com/ice/m_standings.htm?type=DIV";
 
