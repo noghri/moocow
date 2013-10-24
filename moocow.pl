@@ -1072,7 +1072,7 @@ sub chan_acl {
     
 #print "CHAN_ACL: -$hostmask- -$chan- -$nickname-\n";
 
-    if ( defined($hostmask) || $hostmask ne '') {
+    if ( defined($hostmask) && $hostmask ne '') {
         $host = $hostmask;
     }
     else {
