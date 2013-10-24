@@ -21,6 +21,8 @@ use LWP::Simple;
 use Encode qw(encode_utf8);
 use Date::Manip;
 
+use constant { MOOVER => q{$Id$} };
+
 $Config::Any::INI::MAP_SECTION_SPACE_TO_NESTED_KEY = 0;
 
 my %opts;
@@ -628,7 +630,7 @@ sub title {
     my @prams = @_;
     my $url   = $prams[0];
 
-    my $ua = LWP::UserAgent->new;
+    my $ua = LWP::UserAgent::WithCache->new( { 'namespace' => 'moocowlwp_cache', 'default_expires_in' => 3600 } );
     $ua->timeout(10);
     my $req = HTTP::Request->new( GET => $url );
     my $res = $ua->request($req);
