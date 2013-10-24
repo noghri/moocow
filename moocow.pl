@@ -110,6 +110,8 @@ $cmd_hash{"words"}     = sub { word(@_); };
 $cmd_hash{"hack"}      = sub { hack(@_); };
 
 my %pmsg_cmd_hash;
+
+$pmsg_cmd_hash{"help"}	    = sub { help(@_); };
 $pmsg_cmd_hash{"adduser"}   = sub { add_user(@_); };
 $pmsg_cmd_hash{"deluser"}   = sub { del_user(@_); };
 $pmsg_cmd_hash{"checkuser"} = sub { check_user(@_); };
