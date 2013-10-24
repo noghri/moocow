@@ -207,8 +207,8 @@ sub irc_nick_sync {
 
     my ( $nick, $channel ) = @_[ ARG0, ARG1 ];
 
-    my $acl = chan_acl( $nick, $channel, undef);
-    my $uacl = acl( $nick, $umask );
+    my $acl = chan_acl( $nick, $channel);
+    my $uacl = acl( $nick );
 
     return if ( !defined($acl) );
 
@@ -1111,7 +1111,7 @@ sub acl {
     my $nickname = $prams[0];
     my $hostmask = $prams[1];
 
-    print "ACL $hostmask\n";
+    #print "ACL $hostmask\n";
     my $sth;
     my $tnick;
     my %access;
