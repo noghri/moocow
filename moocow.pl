@@ -209,7 +209,7 @@ sub irc_nick_sync {
 
     my $acl = chan_acl( $nick, $channel);
     my $uacl = acl( $nick );
-
+    
     return if ( !defined($acl) );
 
     if ( ( $acl->{'access'} eq "A" ) || ( $acl->{'access'} eq "O" ) ) {
@@ -1082,23 +1082,21 @@ sub chan_acl {
 
     my %access;
 
-    my $query = q{SELECT username, hostmask, chaccess from users, usermask, channel, chanuser WHERE ? GLOB usermask.hostmask AND users.userid = usermask.userid AND chanuser.chanid = channel.chanid AND channame = ?};
+    my $query = q{SELECT username, hostmask, chaccess from users, usermask, channel, chanuser WHERE ? GLOB usermask.hostmask AND users.userid = usermask.userid AND users.userid = chanuser.userid AND chanuser.chanid = channel.chanid AND channame = ?};
 
     my $sth = $dbh->prepare($query) || die("Unable to prepare ACL query: " . $dbh->errstr);
-
 
     $sth->bind_param( 1, $host );
     $sth->bind_param( 2, $chan );
     $sth->execute() || die("Unable to execute query " . $sth->errstr);
-    DBI::dump_results($sth);
 
-    if ( defined( my $res = $sth->fetchrow_hashref ) ) {
+    my $res = $sth->fetchrow_hashref;
+    if ( defined($res)) {
+        print "hostmask: " . $res->{'hostmask'} . "Host: " . $host . "\n";
         if ( matches_mask( $res->{'hostmask'}, $host ) ) {
             $access{'hostmask'} = $res->{'hostmask'};
             $access{'username'} = $res->{'username'};
             $access{'access'}   = $res->{'chaccess'};
-
-            #print Dumper(\%access);
             return \%access;
         }
 
