@@ -807,14 +807,11 @@ sub delchan {
         $irc->yield(notice => $who => "delchan #channame|ID");
         return;
     }
-
-    my $query = q{DELETE FROM channel WHERE channame = ? OR chanid = ? };
+    # first lookup the chanid...
+    my $query = q{SELECT chanid FROM channel WHERE channame = ? OR chanid = ? };
     
     my $sth = $dbh->prepare($query);
-    
-    if (!$sth) {
-        $irc->yield( privmsg => $who => "Error preparing statement for delete: " . $dbh->errstr );
-    }
+    if(!$sth) { $irc->yield(privmsg => $who => "Error preparing statement for chanid lookup"); return; } 
     
     $sth->bind_param(1, $args[0]);
     $sth->bind_param(2, $args[1]);
@@ -822,17 +819,64 @@ sub delchan {
     my $rv = $sth->execute();   
 
     if ( !$rv ) {
-        $irc->yield( privmsg => $who => "Error deleting channel: " . $sth->errstr );
+        $irc->yield( privmsg => $who => "Error looking up channel: " . $sth->errstr );
         return;
     }
+        
+
+    my @arr = $sth->fetchrow_array();
+    $sth->finish;
+    
+    if(!@arr)
+    {
+        $irc->yield(privmsg => $who => "Channel not found");
+        return;
+    }
+
+    my $chanid = $arr[0];
+
+    $query = q{DELETE FROM chanuser WHERE chanid = ?};
+    $dbh->begin_work;
+    
+    $sth = $dbh->prepare($query);
+    
+    if (!$sth) {
+        $irc->yield( privmsg => $who => "Error preparing statement for delete: " . $dbh->errstr );
+    }
+
+    $sth->bind_param(1, $chanid);
+    $rv = $sth->execute();
+    if( !$rv ) {
+        $dbh->rollback;
+        $irc->yield( privmsg => $who => "Error deleting chanusers " . $sth->errstr );
+        return;
+    }
+    
+    # we don't check the number of rows deleted because we don't care if no users are left and zero are deleted
+    $sth->finish;
+    
+
+    $query = q{DELETE FROM channel WHERE chanid = ? };
+
+    $sth = $dbh->prepare($query);
+    
+    if (!$sth) {
+        $irc->yield( privmsg => $who => "Error preparing statement for delete: " . $dbh->errstr );
+    }
+    
+    $sth->bind_param(1, $chanid);
+    $sth->execute();    
+        
     if($sth->rows)
     {
+        $dbh->commit;
         $irc->yield(privmsg => $who => "Channel deleted");
         delete $chans{$channel};
         $irc->plugin_del('AutoJoin');
         $autojoin = $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans));
         $irc->yield( part => $channel);
     } else  {
+        $dbh->rollback;
         $irc->yield(privmsg => $who => "Unable to delete channel - not found?");
     }
         
