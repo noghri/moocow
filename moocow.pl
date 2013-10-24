@@ -1071,6 +1071,8 @@ sub chan_acl {
     my $hostmask = $prams[2];
     my $host;    
     
+print "-$hostmask- -$chan- -$nickname-\n";
+
     if ( defined($hostmask) || $hostmask ne '') {
         $host = $hostmask;
     }
@@ -1085,11 +1087,11 @@ sub chan_acl {
 
     my $sth = $dbh->prepare($query) || die("Unable to prepare ACL query: " . $dbh->errstr);
 
-    #DBI::dump_results($sth);
 
     $sth->bind_param( 1, $host );
     $sth->bind_param( 2, $chan );
     $sth->execute() || die("Unable to execute query " . $sth->errstr);
+    DBI::dump_results($sth);
 
     if ( defined( my $res = $sth->fetchrow_hashref ) ) {
         if ( matches_mask( $res->{'hostmask'}, $host ) ) {
