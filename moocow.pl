@@ -123,6 +123,7 @@ $pmsg_cmd_hash{"moduser"}       = sub { mod_user(@_); };
 $pmsg_cmd_hash{"listusers"}     = sub { list_users(@_); };
 $pmsg_cmd_hash{"mod_chanuser"}  = sub { mod_chanuser(@_); };
 $pmsg_cmd_hash{"list_chanuser"} = sub { list_chanuser(@_); };
+$pmsg_cmd_hash{"del_chanuser"} = sub { del_chanuser(@_); };
 
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_msg irc_ctcp_version irc_nick_sync)], ],
@@ -725,6 +726,7 @@ sub help {
     $irc->yield( notice => $nick => "!listusers" );
     $irc->yield( notice => $nick => "!mod_chanuser <channel> <nickname> <acl>" );
     $irc->yield( notice => $nick => "!list_chanuser <channel>" );
+    $irc->yield( notice => $nick => "!del_chanuser <channel> <nickname>" );
 
 }
 
@@ -1282,6 +1284,72 @@ sub mod_chanuser {
     }
 
 }
+
+sub del_chanuser {
+
+    my @prams = @_;
+    my $chan  = $prams[1];
+    my $nick  = $prams[2];
+    my $umask = $prams[3];
+
+    my @args = split / /, $prams[0];
+
+    my $lchan = $args[0];
+    my $lnick = $args[1];
+
+    my $uid;
+
+    my $nacl = acl( $nick, $umask );
+
+    if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {  
+        $irc->yield( notice => $nick => "No Access!" );
+        return;
+    }
+
+    my $query = q{ SELECT username,users.userid AS userid,chaccess,channame FROM users,channel,chanuser WHERE channel.channame = ? AND channel.chanid == chanuser.chanid AND chanuser.userid == users.userid};
+
+    my $sth = $dbh->prepare($query);
+    $sth->bind_param(1, $lchan);
+    my $rv = $sth->execute();
+    if(!$rv)
+    {   
+        $irc->yield(privmsg => $nick => "Unable query: " . $sth->errstr);
+    }
+    while ( defined( my $res = $sth->fetchrow_hashref ) ) {
+
+        my $uname  = $res->{'username'};
+
+        if($uname eq $lnick) {
+            $uid = $res->{'userid'};
+        }
+
+    }
+    if(!$sth->rows) {
+        $irc->yield(privmsg => $nick => "No users found");
+    }
+
+    $dbh->begin_work();
+
+    $query = q{ DELETE FROM chanuser WHERE chuserid = ? };
+    $sth = $dbh->prepare($query);
+    $sth->bind_param(1, $uid);
+    my $rv2 = $sth->execute();
+    if(!$rv2)
+    {
+        $irc->yield(privmsg => $nick => "Unable to delete");
+        return;
+    }
+ 
+    $dbh->commit;
+    if ( $sth->rows > 0 ) {
+        $irc->yield( privmsg => $chan => "User has been deleted." );
+    }
+
+    return;
+    
+
+}
+
 
 sub list_chanuser {
 
