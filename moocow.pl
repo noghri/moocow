@@ -207,7 +207,7 @@ sub irc_nick_sync {
 
     my ( $umask, $channel ) = @_[ ARG0, ARG1 ];
     my $nick = ( split /!/, $umask )[0];
-
+    print "IRC_NICK_SYNC umask is $umask\n";
     my $acl = chan_acl( $nick, $channel, $umask);
     my $uacl = acl( $nick, $umask );
 
@@ -402,7 +402,7 @@ sub weather_default {
 
     if ( $zip eq "" ) { return }
 
-    my $query = q{UPDATE users set wzdefault = ? where username = (SELECT username WHERE usermask.userid == users.userid AND ? GLOB usermask.hostmask)};
+    my $query = q{UPDATE users set wzdefault = ? where username = (SELECT username FROM users,usermask WHERE usermask.userid == users.userid AND ? GLOB usermask.hostmask)};
 
     my $sth = $dbh->prepare($query);
     if (!$sth) {
@@ -1071,7 +1071,7 @@ sub chan_acl {
     my $hostmask = $prams[2];
     my $host;    
     
-print "-$hostmask- -$chan- -$nickname-\n";
+print "CHAN_ACL: -$hostmask- -$chan- -$nickname-\n";
 
     if ( defined($hostmask) || $hostmask ne '') {
         $host = $hostmask;
@@ -1112,6 +1112,7 @@ sub acl {
     my $nickname = $prams[0];
     my $hostmask = $prams[1];
 
+    print "ACL $hostmask\n";
     my $sth;
     my $tnick;
     my %access;
