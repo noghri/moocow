@@ -205,10 +205,9 @@ sub ban_expire {
 
 sub irc_nick_sync {
 
-    my ( $umask, $channel ) = @_[ ARG0, ARG1 ];
-    my $nick = ( split /!/, $umask )[0];
-    print "IRC_NICK_SYNC umask is $umask\n";
-    my $acl = chan_acl( $nick, $channel, $umask);
+    my ( $nick, $channel ) = @_[ ARG0, ARG1 ];
+
+    my $acl = chan_acl( $nick, $channel, undef);
     my $uacl = acl( $nick, $umask );
 
     return if ( !defined($acl) );
@@ -1071,7 +1070,7 @@ sub chan_acl {
     my $hostmask = $prams[2];
     my $host;    
     
-print "CHAN_ACL: -$hostmask- -$chan- -$nickname-\n";
+#print "CHAN_ACL: -$hostmask- -$chan- -$nickname-\n";
 
     if ( defined($hostmask) || $hostmask ne '') {
         $host = $hostmask;
