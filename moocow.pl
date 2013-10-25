@@ -30,6 +30,7 @@ my $confpath = "moocow.config";
 
 my %last_nhl;
 my %last_gogl;
+my $last_u2;
 
 getopts( 'h:f:', \%opts );
 
@@ -650,6 +651,10 @@ sub title {
 }
 
 sub youtube {
+    my $channel = $_[1];
+    return if (defined($last_u2{$channel}) && $last_u2{$channel} > (time()- 30));
+    $last_u2{$channel} = time();
+    
     my $u2 = $3 if ( $_[0] =~ m/^.*youtu(\.)?be(\.com\/watch\?v=|\/)(.*)/i );
     my $yt = new WebService::GData::YouTube();
     say( $_[1], "YouTube: \x02" . $yt->get_video_by_id($u2)->title() . "\x02 Duration: \x02" . $yt->get_video_by_id($u2)->duration . "\x02 seconds Views: \x02" . $yt->get_video_by_id($u2)->view_count . "\x02" );
