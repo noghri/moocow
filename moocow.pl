@@ -1458,22 +1458,26 @@ sub addrss {
             binmode STDOUT, ":utf8";
             for (my $i = 0; $i < $rp->count(); $i++) {
                     my $it = $rp->get($i);
-                    my $guid=encode_utf8($it->get('guid'));
-                    if (guid_exists_in_db($nick, $guid)==1){
-                        add_feed_to_db($nick, $guid, $rssurl);
+                    my $title=encode_utf8($it->get('title'));
+                    if (title_exists_in_db($nick, $title)==1){
+                        add_feed_to_db($nick, $title, $rssurl);
+                    }
+                    else {
+                        $irc->yield( privmsg => $nick => "feed already exists");
+                        return;
                     }
             }
          $irc->yield( privmsg => $nick => "added successfully");
 }
 
-sub guid_exists_in_db {
+sub title_exists_in_db {
     my @prams = @_;
     my $nick = $prams[0];
-    my $guid = $prams[1];
-    my $query = q{SELECT nick from rssfeeds where nick = ? and guid GLOB  ?};
+    my $title = $prams[1];
+    my $query = q{SELECT nick from rssfeeds where nick = ? and title GLOB  ?};
     my $sth = $dbh->prepare($query);
     $sth->bind_param( 1, $nick );
-    $sth->bind_param(2, $guid );
+    $sth->bind_param(2, $title );
     $sth->execute() || die "Error: cannot get rss feeds " . $sth->errstr; 
     if( $sth->fetch) {
     return 0;
@@ -1487,12 +1491,12 @@ sub guid_exists_in_db {
 sub add_feed_to_db {
     my @prams = @_;
     my $nick = $prams[0];
-    my $guid = $prams[1];
+    my $title = $prams[1];
     my $rssurl = $prams[2];
-    my $query = q{INSERT into rssfeeds (nick, guid, rssurl) VALUES(?, ?, ?)};
+    my $query = q{INSERT into rssfeeds (nick, title, rssurl) VALUES(?, ?, ?)};
     my $sth = $dbh->prepare($query);
     $sth->bind_param( 1, $nick );
-    $sth->bind_param(2, $guid );
+    $sth->bind_param(2, $title );
     $sth->bind_param(3, $rssurl );
     
     my $rv = $sth->execute() || die "Error: cannot get rss feeds " . $sth->errstr; 
@@ -1519,28 +1523,35 @@ sub getrss {
         $irc->yield(privmsg => $nick => "Unable to list channels: " . $sth->errstr);
     }
 while ( defined( my $res = $sth->fetchrow_hashref ) ) { 
-    my $rssurl = $res->{'rssurl'};
+    show_new_feeds($nick, $res->{'rssurl'});
+      }
+
+    
+}
+
+sub show_new_feeds {
+my @prams = @_;
+my $nick = $prams[0];
+my $rssurl = $prams[1];
+print "getting rssurl: $rssurl\n";
     my $xml = get($rssurl);
             my $rp = new XML::RSS::Parser::Lite;
             $rp->parse($xml);
+            print "count " . $rp->count() . "\n";
             binmode STDOUT, ":utf8";
             for (my $i = 0; $i < $rp->count(); $i++) {
                     my $it = $rp->get($i);
-                    my $title=encode_utf8($it->get('title'));
                     my $pubdate=encode_utf8($it->get('pubDate'));
                     my $link = $it->get('url');
-                    my $guid = $it->get('guid');
-                    if (guid_exists_in_db($nick, $guid)==1){
-                        add_feed_to_db($nick, $guid, $rssurl);
+                    my $title = $it->get('title');
+                    print "title is $title\n";
+                    print "link is $link\n";
+                    if (title_exists_in_db($nick, $title)==1){
+                        add_feed_to_db($nick, $title, $rssurl);
                         $irc->yield( privmsg => $nick => "$title");
                         $irc->yield( privmsg => $nick => "$link");
-                        $irc->yield( privmsg => $nick => "$pubdate");
-                        $irc->yield( privmsg => $nick => "");
                     }
             }
-
-      }
-    
 }
 
 
