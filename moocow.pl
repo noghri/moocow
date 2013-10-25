@@ -189,7 +189,7 @@ sub ban_expire {
     for my $channel ( keys %{ $irc->channels() } ) {
         if ( $banexpire > 0 ) {
             my $banlist = $irc->channel_ban_list($channel);
-            foreach my $q ( keys($banlist) ) {
+            foreach my $q ( keys( %{$banlist}) ) {
                 my $tm      = time();
                 my $bantime = $tm - $banlist->{$q}->{'SetAt'};
                 if ( $bantime > $banexpire ) {
