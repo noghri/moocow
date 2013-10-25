@@ -16,6 +16,12 @@ use HTML::TableExtract;
 use HTML::HeadParser;
 use LWP::UserAgent::WithCache;
 use IRC::Utils ':ALL';
+use XML::RSS::Parser::Lite;
+use LWP::Simple;
+use Encode qw(encode_utf8);
+use Date::Manip;
+
+use constant { MOOVER => q{$Id$} };
 
 $Config::Any::INI::MAP_SECTION_SPACE_TO_NESTED_KEY = 0;
 
@@ -117,6 +123,8 @@ $pmsg_cmd_hash{"adduser"}   = sub { add_user(@_); };
 $pmsg_cmd_hash{"deluser"}   = sub { del_user(@_); };
 $pmsg_cmd_hash{"checkuser"} = sub { check_user(@_); };
 
+$pmsg_cmd_hash{"addrss"}    = sub { addrss(@_); };
+$pmsg_cmd_hash{"getrss"}    = sub { getrss(@_); };
 $pmsg_cmd_hash{"addchan"}      = sub { addchan(@_); };
 $pmsg_cmd_hash{"add_chanuser"} = sub { add_chanuser(@_); };
 $pmsg_cmd_hash{"delchan"}      = sub { delchan(@_); };
@@ -155,7 +163,7 @@ sub _start {
     $irc->plugin_add(
         'CTCP',
         POE::Component::IRC::Plugin::CTCP->new(
-            version    => "moocow 0.01 - its perl!",
+            version    => "moocow " . MOOVER . " - its perl!",
             userinfo   => "I am a cow, not a user!",
             clientinfo => "moocow - its perl!",
             source     => "grass"
@@ -622,7 +630,7 @@ sub title {
     my @prams = @_;
     my $url   = $prams[0];
 
-    my $ua = LWP::UserAgent->new;
+    my $ua = LWP::UserAgent::WithCache->new( { 'namespace' => 'moocowlwp_cache', 'default_expires_in' => 3600 } );
     $ua->timeout(10);
     my $req = HTTP::Request->new( GET => $url );
     my $res = $ua->request($req);
@@ -1437,3 +1445,102 @@ sub list_chanuser {
     }
 
 }
+
+sub addrss {
+    my @prams = @_;
+    my $chan  = $prams[1];
+    my $nick = $prams[2];
+    my @args = split / /, $prams[0];
+    my $rssurl = $args[0];
+    my $xml = get($rssurl);
+            my $rp = new XML::RSS::Parser::Lite;
+            $rp->parse($xml);
+            binmode STDOUT, ":utf8";
+            for (my $i = 0; $i < $rp->count(); $i++) {
+                    my $it = $rp->get($i);
+                    my $guid=encode_utf8($it->get('guid'));
+                    if (guid_exists_in_db($nick, $guid)==1){
+                        add_feed_to_db($nick, $guid, $rssurl);
+                    }
+            }
+         $irc->yield( privmsg => $nick => "added successfully");
+}
+
+sub guid_exists_in_db {
+    my @prams = @_;
+    my $nick = $prams[0];
+    my $guid = $prams[1];
+    my $query = q{SELECT nick from rssfeeds where nick = ? and guid GLOB  ?};
+    my $sth = $dbh->prepare($query);
+    $sth->bind_param( 1, $nick );
+    $sth->bind_param(2, $guid );
+    $sth->execute() || die "Error: cannot get rss feeds " . $sth->errstr; 
+    if( $sth->fetch) {
+    return 0;
+    }
+    else
+    {
+    return 1;
+    }
+}
+
+sub add_feed_to_db {
+    my @prams = @_;
+    my $nick = $prams[0];
+    my $guid = $prams[1];
+    my $rssurl = $prams[2];
+    my $query = q{INSERT into rssfeeds (nick, guid, rssurl) VALUES(?, ?, ?)};
+    my $sth = $dbh->prepare($query);
+    $sth->bind_param( 1, $nick );
+    $sth->bind_param(2, $guid );
+    $sth->bind_param(3, $rssurl );
+    
+    my $rv = $sth->execute() || die "Error: cannot get rss feeds " . $sth->errstr; 
+    if ( !$rv ) {
+        $irc->yield( privmsg => $nick => "error inserting feed database");
+       }
+    else {
+        if ($sth->rows > 0) {
+        }
+    }
+}
+
+sub getrss {
+    my @prams = @_;
+    my $chan  = $prams[1];
+    my $nick = $prams[2];
+   
+    my $query = q{select DISTINCT rssurl from rssfeeds where nick = ? };
+    my $sth = $dbh->prepare($query);
+    $sth->bind_param( 1, $nick );
+    my $rv = $sth->execute();
+    if(!$rv)
+    {
+        $irc->yield(privmsg => $nick => "Unable to list channels: " . $sth->errstr);
+    }
+while ( defined( my $res = $sth->fetchrow_hashref ) ) { 
+    my $rssurl = $res->{'rssurl'};
+    my $xml = get($rssurl);
+            my $rp = new XML::RSS::Parser::Lite;
+            $rp->parse($xml);
+            binmode STDOUT, ":utf8";
+            for (my $i = 0; $i < $rp->count(); $i++) {
+                    my $it = $rp->get($i);
+                    my $title=encode_utf8($it->get('title'));
+                    my $pubdate=encode_utf8($it->get('pubDate'));
+                    my $link = $it->get('url');
+                    my $guid = $it->get('guid');
+                    if (guid_exists_in_db($nick, $guid)==1){
+                        add_feed_to_db($nick, $guid, $rssurl);
+                        $irc->yield( privmsg => $nick => "$title");
+                        $irc->yield( privmsg => $nick => "$link");
+                        $irc->yield( privmsg => $nick => "$pubdate");
+                        $irc->yield( privmsg => $nick => "");
+                    }
+            }
+
+      }
+    
+}
+
+
