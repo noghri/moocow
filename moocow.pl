@@ -26,7 +26,10 @@ $Config::Any::INI::MAP_SECTION_SPACE_TO_NESTED_KEY = 0;
 
 my %opts;
 my $confpath = "moocow.config";
+
+
 my %last_nhl;
+my %last_gogl;
 
 getopts( 'h:f:', \%opts );
 
@@ -618,6 +621,9 @@ sub gogl_url {
 sub gogl {
     my $url     = gogl_url(@_);
     my $channel = $_[1];
+
+    return if (defined($last_gogl{$channel}) && $last_gogl{$channel} > (time()- 30));
+    $last_gogl{$channel} = time();
 
     $irc->yield( privmsg => $channel => $url ) if ( defined($url) );
     my $title = title($url);
