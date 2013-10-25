@@ -30,7 +30,7 @@ my $confpath = "moocow.config";
 
 my %last_nhl;
 my %last_gogl;
-my $last_u2;
+my %last_u2;
 
 getopts( 'h:f:', \%opts );
 
@@ -793,8 +793,8 @@ sub nhl_standings {
     ) || die("Unable create object: $!");
 
     $te->parse( $res->content ) || die("Error: $!");
-
-    my $header = sprintf( "%-7s %-20s %-3s %-3s %-3s %-3s %-3s", "Place", "Team", "GP", "W", "L", "OTL", "P" );
+    my $format = q{%-7s %-20s %-3s %-3s %-3s %-3s %-3s};
+    my $header = sprintf($format, "Place", "Team", "GP", "W", "L", "OTL", "P" );
 
     foreach my $ts ( $te->tables ) {
         $irc->yield( privmsg => $chan => $header );
@@ -802,7 +802,7 @@ sub nhl_standings {
             chomp(@$row);
             my $team = @{$row}[1];
             $team =~ s/\n//g;
-            my $line = sprintf( "%-7s %-20s %-3s %-3s %-3s %-3s %-3s", @{$row}[0], $team, @{$row}[2], @{$row}[3], @{$row}[4], @{$row}[5], @{$row}[6] );
+            my $line = sprintf($format , @{$row}[0], $team, @{$row}[2], @{$row}[3], @{$row}[4], @{$row}[5], @{$row}[6] );
             $irc->yield( privmsg => $chan => $line );
         }
 
