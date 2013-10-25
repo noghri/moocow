@@ -26,6 +26,7 @@ $Config::Any::INI::MAP_SECTION_SPACE_TO_NESTED_KEY = 0;
 
 my %opts;
 my $confpath = "moocow.config";
+my %last_nhl;
 
 getopts( 'h:f:', \%opts );
 
@@ -737,6 +738,7 @@ sub help {
 
 }
 
+
 sub nhl_standings {
 
     my @prams    = @_;
@@ -744,7 +746,11 @@ sub nhl_standings {
     my $chan     = $prams[1];
     my $nick     = $prams[2];
 
+
+    return if (defined($last_nhl{$chan}) && $last_nhl{$chan} > (time()- 60));
     return if ( $division eq "" );
+    
+    $last_nhl{$chan} = time();    
 
     $division = lc($division);
     $division = "metropolitan" if($division eq "patrick");
