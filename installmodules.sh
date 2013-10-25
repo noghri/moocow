@@ -72,4 +72,6 @@ do
 done
 $CPANM --sudo  Config::Tiny
 $CPANM --sudo  DBD::SQLite
+$CPANM --sudo  local::lib
+$CPANM --sudo  XMLRCP::Lite
 $CPANM --sudo  -f LWP::UserAgent::WithCache

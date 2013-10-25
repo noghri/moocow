@@ -16,7 +16,7 @@ fi
 
 
 sqlite3 $FILENAME <<EOF
-    CREATE TABLE rssfeeds (nick, feedname, feedurl, title, link, pubdate DATE, isread BOOL, titleid integer primary key autoincrement);
+    CREATE TABLE rssfeeds (nick, guid, rssurl, titleid integer primary key autoincrement);
 	CREATE TABLE quotes (quote, timestamp, usermask, channel, quoteid integer primary key autoincrement);
 	CREATE TABLE users (username unique, access, wzdefault , userid integer primary key autoincrement);
 	CREATE TABLE usermask (hostmask, userid integer not null, foreign key(userid) REFERENCES users(userid) ON DELETE CASCADE);
