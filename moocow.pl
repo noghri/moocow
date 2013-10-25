@@ -18,8 +18,7 @@ use LWP::UserAgent::WithCache;
 use IRC::Utils ':ALL';
 use XML::RSS;
 use LWP::Simple;
-use Encode qw(encode_utf8);
-
+use Text::Aspell;
 use constant { MOOVER => q{$Id$} };
 
 $Config::Any::INI::MAP_SECTION_SPACE_TO_NESTED_KEY = 0;
@@ -119,6 +118,7 @@ $cmd_hash{"wzd"}       = sub { weather_default(@_); };
 $cmd_hash{"nhl"}       = sub { nhl_standings(@_); };
 $cmd_hash{"words"}     = sub { word(@_); };
 $cmd_hash{"hack"}      = sub { hack(@_); };
+$cmd_hash{"spell"}      = sub { spell(@_); };
 
 my %pmsg_cmd_hash;
 
@@ -533,6 +533,29 @@ sub coinflip {
     }
     $irc->yield( privmsg => $channel => "$result" );
 }
+
+sub spell{
+    my @prams   = @_;
+    my $channel = $prams[1];
+
+    my @args = split / /, $prams[0];
+    my $word = $args[0];
+    my $speller = Text::Aspell->new;
+    die unless $speller;
+
+    $speller->set_option('lang','en_US');
+    $speller->set_option('sug-mode','fast');
+
+    if ($speller->check( $word )) {
+        $irc->yield( privmsg => $channel => "$word is spelled correctly");
+    }
+    else {
+    my @suggestions = $speller->suggest( $word );
+    $irc->yield( privmsg => $channel => "word is mispelled." );
+    $irc->yield( privmsg => $channel => "suggestions: ". join(' ', @suggestions)); 
+    }
+}
+
 
 sub codeword {
     my @prams    = @_;
