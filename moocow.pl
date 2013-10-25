@@ -16,10 +16,9 @@ use HTML::TableExtract;
 use HTML::HeadParser;
 use LWP::UserAgent::WithCache;
 use IRC::Utils ':ALL';
-use XML::RSS::Parser::Lite;
+use XML::RSS;
 use LWP::Simple;
 use Encode qw(encode_utf8);
-use Date::Manip;
 
 use constant { MOOVER => q{$Id$} };
 
@@ -1453,21 +1452,22 @@ sub addrss {
     my @args = split / /, $prams[0];
     my $rssurl = $args[0];
     my $xml = get($rssurl);
-            my $rp = new XML::RSS::Parser::Lite;
-            $rp->parse($xml);
-            binmode STDOUT, ":utf8";
-            for (my $i = 0; $i < $rp->count(); $i++) {
-                    my $it = $rp->get($i);
-                    my $title=encode_utf8($it->get('title'));
-                    if (title_exists_in_db($nick, $title)==1){
-                        add_feed_to_db($nick, $title, $rssurl);
-                    }
-                    else {
-                        $irc->yield( privmsg => $nick => "feed already exists");
-                        return;
-                    }
-            }
-         $irc->yield( privmsg => $nick => "added successfully");
+            #my $rp = new XML::RSS::Parser::Lite;
+            #$rp->parse($xml);
+    my $rss = new XML::RSS;
+    $rss->parse($xml);
+    foreach my $item (@{$rss->{'items'}}) {
+        my $title=$item->{'title'};
+        my $link=$item->{'link'};
+        if (title_exists_in_db($nick, $title)==1){
+            add_feed_to_db($nick, $title, $rssurl);
+        }
+        else {
+            $irc->yield( privmsg => $nick => "feed already exists");
+            return;
+        }
+    }
+    $irc->yield( privmsg => $nick => "added successfully");
 }
 
 sub title_exists_in_db {
@@ -1522,11 +1522,9 @@ sub getrss {
     {
         $irc->yield(privmsg => $nick => "Unable to list channels: " . $sth->errstr);
     }
-while ( defined( my $res = $sth->fetchrow_hashref ) ) { 
-    show_new_feeds($nick, $res->{'rssurl'});
-      }
-
-    
+    while ( defined( my $res = $sth->fetchrow_hashref ) ) { 
+        show_new_feeds($nick, $res->{'rssurl'});
+    }
 }
 
 sub show_new_feeds {
@@ -1535,23 +1533,17 @@ my $nick = $prams[0];
 my $rssurl = $prams[1];
 print "getting rssurl: $rssurl\n";
     my $xml = get($rssurl);
-            my $rp = new XML::RSS::Parser::Lite;
-            $rp->parse($xml);
-            print "count " . $rp->count() . "\n";
-            binmode STDOUT, ":utf8";
-            for (my $i = 0; $i < $rp->count(); $i++) {
-                    my $it = $rp->get($i);
-                    my $pubdate=encode_utf8($it->get('pubDate'));
-                    my $link = $it->get('url');
-                    my $title = $it->get('title');
-                    print "title is $title\n";
-                    print "link is $link\n";
-                    if (title_exists_in_db($nick, $title)==1){
-                        add_feed_to_db($nick, $title, $rssurl);
-                        $irc->yield( privmsg => $nick => "$title");
-                        $irc->yield( privmsg => $nick => "$link");
-                    }
-            }
+    my $rss = new XML::RSS;
+    $rss->parse($xml);
+    foreach my $item (@{$rss->{'items'}}) {
+        my $title=$item->{'title'};
+        my $link=$item->{'link'};
+        if (title_exists_in_db($nick, $title)==1){
+            add_feed_to_db($nick, $title, $rssurl);
+            $irc->yield( privmsg => $nick => "$title");
+            $irc->yield( privmsg => $nick => "$link");
+       }
+   }
 }
 
 
