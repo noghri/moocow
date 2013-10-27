@@ -129,6 +129,8 @@ $pmsg_cmd_hash{"checkuser"} = sub { check_user(@_); };
 
 $pmsg_cmd_hash{"addrss"}    = sub { addrss(@_); };
 $pmsg_cmd_hash{"getrss"}    = sub { getrss(@_); };
+$pmsg_cmd_hash{"listrss"}    = sub { listrss(@_); };
+$pmsg_cmd_hash{"deleterss"}    = sub { deleterss(@_); };
 $pmsg_cmd_hash{"addchan"}      = sub { addchan(@_); };
 $pmsg_cmd_hash{"add_chanuser"} = sub { add_chanuser(@_); };
 $pmsg_cmd_hash{"delchan"}      = sub { delchan(@_); };
@@ -1510,6 +1512,24 @@ sub addrss {
     $irc->yield( privmsg => $nick => "added successfully");
 }
 
+sub deleterss {
+    my @prams = @_;
+    my $chan  = $prams[1];
+    my $nick = $prams[2];
+    my @args = split / /, $prams[0];
+    my $rssurl = $args[0];
+    my $query = q{DELETE from rssfeeds where nick = ? and rssurl = ?};
+    my $sth = $dbh->prepare($query);
+    $sth->bind_param( 1, $nick );
+    $sth->bind_param(2, $rssurl );
+    my $rv =  $sth->execute(); 
+    if ( !$rv ) {
+        $irc->yield( privmsg => $nick => "error inserting feed database");
+       }
+    else {
+        $irc->yield( privmsg => $nick => "Deleted $rssurl");
+    }
+}
 sub title_exists_in_db {
     my @prams = @_;
     my $nick = $prams[0];
@@ -1566,6 +1586,25 @@ sub getrss {
         show_new_feeds($nick, $res->{'rssurl'});
     }
 }
+
+sub listrss {
+    my @prams = @_;
+    my $chan  = $prams[1];
+    my $nick = $prams[2];
+   
+    my $query = q{select DISTINCT rssurl from rssfeeds where nick = ? };
+    my $sth = $dbh->prepare($query);
+    $sth->bind_param( 1, $nick );
+    my $rv = $sth->execute();
+    if(!$rv)
+    {
+        $irc->yield(privmsg => $nick => "Unable to list channels: " . $sth->errstr);
+    }
+    while ( defined( my $res = $sth->fetchrow_hashref ) ) { 
+        $irc->yield( privmsg => $nick => "$res->{'rssurl'}");
+    }
+}
+
 
 sub show_new_feeds {
 my @prams = @_;
