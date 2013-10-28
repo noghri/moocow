@@ -569,20 +569,21 @@ sub codeword {
     if ( $codeword =~ /pink-ribbons/i ) {
         $kickee  = "jchawk";
         $kickres = "PINK RIBBONS!";
-    }
-    elsif ( $codeword =~ /slacker/i ) {
+    } elsif ( $codeword =~ /slacker/i ) {
         $kickee  = "ktuli";
         $kickres = "SLACKER!";
-    }
-    elsif ( $codeword =~ /dirtbag/i ) {
+    } elsif ( $codeword =~ /dirtbag/i ) {
         $kickee  = "noghri";
         $kickres = "DIRTBAG!";
-    }
-    elsif ( $codeword =~ /wonderbread/i ) {
+    } elsif ( $codeword =~ /wonderbread/i ) {
         $kickee  = "tonyj";
         $kickres = "WONDERBREAD!!!";
+    } elsif ( $codeword =~ /dongs/i ) {
+        $kickee  = "androsyn";
+        $kickres = "DONGS!!!";
     }
 
+    $irc->yield( privmsg => $channel => "EEP!!!" );
     $irc->yield( kick => $channel => $kickee => $kickres );
 }
 
