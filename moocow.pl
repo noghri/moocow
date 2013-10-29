@@ -267,7 +267,7 @@ sub irc_msg {
 }
 
 sub irc_public {
-    my ( $sender, $who, $where, $what ) = @_[ SENDER, ARG0 .. ARG2 ];
+    my ( $kernel, $sender, $who, $where, $what ) = @_[ KERNEL, SENDER, ARG0 .. ARG2 ];
     my $nick = ( split /!/, $who )[0];
     my $channel = $where->[0];
 
@@ -307,7 +307,7 @@ sub irc_public {
     my $cmd = shift @cmd;
     my $cmdargs = join( " ", @cmd );
     if ( exists $cmd_hash{$cmd} ) {
-        $cmd_hash{$cmd}->( $cmdargs, $channel, $nick, $who );
+        $cmd_hash{$cmd}->( $cmdargs, $channel, $nick, $who, $kernel );
     }
 
     return;
@@ -1644,8 +1644,11 @@ print "getting rssurl: $rssurl\n";
 
 sub start_trivia {
 
-    my ( $kernel, $umask, $channel ) = @_[KERNEL,  ARG0, ARG1 ];
-
+    my @prams = @_;
+    my $channel  = $prams[1];
+    my $nick = $prams[2];
+    my $kernel = $prams[4];
+  
     $trivia_on = 1;
 
     my $question = "This is a test question?";
