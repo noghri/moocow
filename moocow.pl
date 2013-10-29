@@ -127,7 +127,7 @@ $cmd_hash{"nhl"}       = sub { nhl_standings(@_); };
 $cmd_hash{"words"}     = sub { word(@_); };
 $cmd_hash{"hack"}      = sub { hack(@_); };
 $cmd_hash{"spell"}      = sub { spell(@_); };
-$cmd_hash{"start1"}      = sub { start_trivia(@_); };
+$cmd_hash{"start"}      = sub { start_trivia(@_); };
 
 my %pmsg_cmd_hash;
 
