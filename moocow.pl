@@ -56,10 +56,17 @@ my $word_ans = "";    # the actual answer
 my %wordppl;          # everyone who tries for score keeping
 my $word_s = "";
 
+#for TRIVIA game
+my $trivia_on = 0;
+my $trivia_ans = "";
+my $trivia_timeout = 30;
+
 # sub-routines
 sub say($$);
 sub word(@);
 sub hack(@);
+
+sub trivia(@);
 
 if ( $autourl =~ /(true|1|yes)/ ) {
     $autourl = 1;
@@ -119,6 +126,7 @@ $cmd_hash{"nhl"}       = sub { nhl_standings(@_); };
 $cmd_hash{"words"}     = sub { word(@_); };
 $cmd_hash{"hack"}      = sub { hack(@_); };
 $cmd_hash{"spell"}      = sub { spell(@_); };
+$cmd_hash{"start1"}      = sub { start_trivia(@_); };
 
 my %pmsg_cmd_hash;
 
@@ -144,7 +152,7 @@ $pmsg_cmd_hash{"del_chanuser"} = sub { del_chanuser(@_); };
 
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_msg irc_ctcp_version irc_nick_sync)], ],
-    inline_states  => { ban_expire => sub { ban_expire(@_); } },
+    inline_states  => { ban_expire => sub { ban_expire(@_); }, trivia_expire => sub { trivia_expire(@_); } },
     heap           => { irc  => $irc },
 );
 
@@ -272,6 +280,12 @@ sub irc_public {
         $word_ans       = "";
         $word_s         = "";
         $word_on        = 0;
+    }
+
+    if ( $trivia_on && $what eq $trivia_ans ) {
+        $irc->yield( privmsg => $channel => "Woot!" );
+        $trivia_on  = 0;
+        $trivia_ans = "";
     }
 
     # these techenically will catch the !tu !u2 urls, but the end result is the same for autourl
@@ -754,6 +768,8 @@ sub help {
     $irc->yield( notice => $nick => "!nhl: nhl standings" );
     $irc->yield( notice => $nick => "!word: word scramble game" );
     $irc->yield( notice => $nick => "!moo: moo." );
+    $irc->yield( notice => $nick => "!addrss <rssurl>: add rss feed." );
+    $irc->yield( notice => $nick => "!getrss: Get rss feed." );
 
     my $nacl = acl( $nick, $who );
 
@@ -1626,4 +1642,31 @@ print "getting rssurl: $rssurl\n";
    }
 }
 
+sub start_trivia {
 
+    my ( $kernel, $umask, $channel ) = @_[KERNEL,  ARG0, ARG1 ];
+
+    $trivia_on = 1;
+
+    my $question = "This is a test question?";
+    $trivia_ans = "yes";
+
+
+    $irc->yield( privmsg => $channel => $question );
+    $kernel->delay('trivia_expire', $trivia_timeout);
+
+
+    return;
+}
+
+sub trivia_expire {
+
+    my ( $kernel, $umask, $channel ) = @_[KERNEL,  ARG0, ARG1 ];
+
+    $trivia_on = 0;
+
+    $irc->yield( privmsg => $channel => "Nobody got that right. The answer was: $trivia_ans" ); 
+    $trivia_ans = "";
+
+    return;
+}
