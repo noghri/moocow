@@ -128,6 +128,7 @@ $cmd_hash{"words"}     = sub { word(@_); };
 $cmd_hash{"hack"}      = sub { hack(@_); };
 $cmd_hash{"spell"}      = sub { spell(@_); };
 $cmd_hash{"start"}      = sub { start_trivia(@_); };
+$cmd_hash{"score"}      = sub { trivia_score(@_); };
 
 my %pmsg_cmd_hash;
 
@@ -771,6 +772,8 @@ sub help {
     $irc->yield( notice => $nick => "!moo: moo." );
     $irc->yield( notice => $nick => "!addrss <rssurl>: add rss feed." );
     $irc->yield( notice => $nick => "!getrss: Get rss feed." );
+    $irc->yield( notice => $nick => "!start: start trivia game." );
+    $irc->yield( notice => $nick => "!score: trivia scores." );
 
     my $nacl = acl( $nick, $who );
 
@@ -1675,7 +1678,7 @@ sub start_trivia {
     my $count = 0;
     while ( defined( my $res = $sth->fetchrow_hashref ) ) {
         $question = $res->{'question'};
-        $trivia_ans = $res->{'answer'};
+        $trivia_ans = lc($res->{'answer'});
     }
 
     $irc->yield( privmsg => $channel => $question );
@@ -1696,3 +1699,13 @@ sub trivia_expire {
 
     return;
 }
+
+sub trivia_score {
+
+    my @prams = @_;
+    my $channel  = $prams[1];
+    my $nick = $prams[2];
+
+}
+
+
