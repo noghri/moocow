@@ -59,7 +59,8 @@ my $word_s = "";
 #for TRIVIA game
 my $trivia_on = 0;
 my $trivia_ans = "";
-my $trivia_timeout = 30;
+my $trivia_timeout = 60;
+my $trivia_chan = "";
 
 # sub-routines
 sub say($$);
@@ -283,7 +284,7 @@ sub irc_public {
     }
 
     if ( $trivia_on && $what eq $trivia_ans ) {
-        $irc->yield( privmsg => $channel => "Woot!" );
+        $irc->yield( privmsg => $channel => "Correct!!  $nick got that!" );
         $trivia_on  = 0;
         $trivia_ans = "";
     }
@@ -1648,12 +1649,34 @@ sub start_trivia {
     my $channel  = $prams[1];
     my $nick = $prams[2];
     my $kernel = $prams[4];
+
+    if ($trivia_on) { return; } 
   
     $trivia_on = 1;
+    $trivia_chan = $channel;
+    my $question = "";
 
-    my $question = "This is a test question?";
-    $trivia_ans = "yes";
+    my $query    = q{SELECT question,answer FROM trivia ORDER BY RANDOM() LIMIT 1};
+    my $sth;
+    $sth   = $dbh->prepare($query);
+    if(!$sth)
+    {
+        $irc->yield(privmsg => $channel => "Error fetching question: " . $dbh->errstr);
+        return;
+    }
 
+    my $rv = $sth->execute();
+
+    if (!$rv) {
+        $irc->yield( privmsg => $channel => "Error reading question: " . $sth->errstr );
+        return;
+    }
+
+    my $count = 0;
+    while ( defined( my $res = $sth->fetchrow_hashref ) ) {
+        $question = $res->{'question'};
+        $trivia_ans = $res->{'answer'};
+    }
 
     $irc->yield( privmsg => $channel => $question );
     $kernel->delay('trivia_expire', $trivia_timeout);
@@ -1664,11 +1687,11 @@ sub start_trivia {
 
 sub trivia_expire {
 
-    my ( $kernel, $umask, $channel ) = @_[KERNEL,  ARG0, ARG1 ];
+    if(!$trivia_on) { return; }
 
     $trivia_on = 0;
 
-    $irc->yield( privmsg => $channel => "Nobody got that right. The answer was: $trivia_ans" ); 
+    $irc->yield( privmsg => $trivia_chan => "Nobody got that right. The answer was: $trivia_ans" ); 
     $trivia_ans = "";
 
     return;
