@@ -1518,7 +1518,11 @@ sub addrss {
             #my $rp = new XML::RSS::Parser::Lite;
             #$rp->parse($xml);
     my $rss = new XML::RSS;
-    $rss->parse($xml);
+    eval {$rss->parse($xml) };
+    if ($@) {
+        $irc->yield( privmsg => $nick => "unable to add feed");
+        return;
+    }
     foreach my $item (@{$rss->{'items'}}) {
         my $title=$item->{'title'};
         my $link=$item->{'link'};
