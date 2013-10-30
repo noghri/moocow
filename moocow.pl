@@ -288,6 +288,7 @@ sub irc_public {
         $irc->yield( privmsg => $channel => "Correct!!  $nick got that!" );
         $trivia_on  = 0;
         $trivia_ans = "";
+	score_trivia($nick);
     }
 
     # these techenically will catch the !tu !u2 urls, but the end result is the same for autourl
@@ -1712,4 +1713,12 @@ sub trivia_score {
 
 }
 
+sub score_trivia {
+
+    my @prams = @_;
+
+    my $nick = $prams[0];
+
+
+}
 
