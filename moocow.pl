@@ -285,7 +285,7 @@ sub irc_public {
     }
 
     if ( $trivia_on && $what eq $trivia_ans ) {
-        $irc->yield( privmsg => $channel => "Correct!!  $nick got that!" );
+        $irc->yield( privmsg => $channel => "Correct!!  $nick got that! The answer was $trivia_ans" );
         $trivia_on  = 0;
         $trivia_ans = "";
 	score_trivia($nick);
@@ -1710,6 +1710,8 @@ sub trivia_score {
     my @prams = @_;
     my $channel  = $prams[1];
     my $nick = $prams[2];
+
+    
 
 }
 
