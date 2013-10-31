@@ -16,6 +16,7 @@ fi
 
 
 sqlite3 $FILENAME <<EOF
+	CREATE TABLE tscores (nick, score, id integer primary key autoincrement);
         CREATE TABLE trivia (question, answer, lastused, qid integer primary key autoincrement);
         CREATE TABLE rssfeeds (nick, title, rssurl, titleid integer primary key autoincrement);
 	CREATE TABLE quotes (quote, timestamp, usermask, channel, quoteid integer primary key autoincrement);

@@ -1719,6 +1719,41 @@ sub score_trivia {
 
     my $nick = $prams[0];
 
+    my $query = q{SELECT nick,score from tscores where nick = ?};
+    my $sth = $dbh->prepare($query);
+    $sth->bind_param( 1, $nick );
+    my $rv = $sth->execute();
+    if(!$rv)
+    {
+        $irc->yield(privmsg => $nick => "Unable to get score: " . $sth->errstr);
+    }
+    else {
+        if ( $sth->rows > 0 ) {
+            my $res = $sth->fetchrow_hashrev;
+            my $score = $res->{'score'};
+            $score++;
+            $query = q{UPDATE tscores set score = ? where nick = ?};
+            $sth = $dbh->prepare($query);
+            $sth->bind_param( 1, $score);
+            $sth->bind_param( 2, $nick);
+            my $rv2 = $sth->execute();
+            if(!$rv2) {
+                $irc->yield(privmsg => $nick => "Unable to set score: " . $sth->errstr);
+            }
+           
+        } 
+        else {
+     
+        $query = q{INSERT INTO tscores (nick, score) values (?, 1)};
+        $sth = $dbh->prepare($query);
+        $sth->bind_param( 1, $nick);
+        my $rv3 = $sth->execute();
+        if(!$rv3) {
+            $irc->yield(privmsg => $nick => "Unable to add score: " . $sth->errstr);
+        }
 
+
+        }
+    }
 }
 
