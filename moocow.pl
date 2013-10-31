@@ -1728,8 +1728,8 @@ sub score_trivia {
         $irc->yield(privmsg => $nick => "Unable to get score: " . $sth->errstr);
     }
     else {
+        my $res = $sth->fetchrow_hashref;
         if ( $sth->rows > 0 ) {
-            my $res = $sth->fetchrow_hashrev;
             my $score = $res->{'score'};
             $score++;
             $query = q{UPDATE tscores set score = ? where nick = ?};
