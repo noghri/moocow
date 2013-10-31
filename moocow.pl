@@ -129,7 +129,7 @@ $cmd_hash{"words"}     = sub { word(@_); };
 $cmd_hash{"hack"}      = sub { hack(@_); };
 $cmd_hash{"spell"}      = sub { spell(@_); };
 $cmd_hash{"start"}      = sub { start_trivia(@_); };
-$cmd_hash{"score"}      = sub { trivia_score(@_); };
+$cmd_hash{"tscore"}      = sub { trivia_score(@_); };
 
 my %pmsg_cmd_hash;
 
@@ -1734,7 +1734,34 @@ sub trivia_score {
     my $channel  = $prams[1];
     my $nick = $prams[2];
 
-    
+
+    my $query = q{SELECT count(*) from tscores};
+    my $sth = $dbh->prepare($query);
+    my $rv1 = $sth->execute();
+    my $res = $sth->fetchrow_hashref;
+    my $rowcount = $res->{'count(*)'};
+
+    $query = q{SELECT nick,score from tscores ORDER BY score DESC LIMIT 10};
+    $sth = $dbh->prepare($query);
+    my $rv = $sth->execute();
+    if(!$rv) {
+        $irc->yield(privmsg => $nick => "Unable to get scores: " . $sth->errstr);
+    }
+    $res = $sth->fetchrow_hashref;
+
+    if($rowcount > 10) { $rowcount = 10; }
+
+    my $output = "";
+
+    for(my $i = 1; $i < $rowcount+1 ; $i++) {
+
+       $output = $output . " $i. $res->{'nick'}($res->{'score'})";  
+       $res = $sth->fetchrow_hashref;
+
+    }
+
+    $irc->yield( privmsg => $channel => "Top 10 scores for trivia:" );
+    $irc->yield( privmsg => $channel => $output );
 
 }
 
