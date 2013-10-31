@@ -169,7 +169,7 @@ sub _start {
     
     # retrieve our component's object from the heap where we stashed it
     my $irc = $heap->{irc};
-    $autojoin = $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans ) );
+    $autojoin = $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans, RejoinOnKick => 1 ) );
     $irc->plugin_add(
         'Connector',
         POE::Component::IRC::Plugin::Connector->new(
@@ -288,7 +288,7 @@ sub irc_public {
     }
 
     if ( $trivia_on && $what eq $trivia_ans ) {
-        $irc->yield( privmsg => $channel => "Correct!!  $nick got that!" );
+        $irc->yield( privmsg => $channel => "Correct!!  $nick got that! The answer was $trivia_ans" );
         $trivia_on  = 0;
         $trivia_ans = "";
 	score_trivia($nick);
@@ -946,7 +946,7 @@ sub delchan {
         $irc->yield(privmsg => $who => "Channel deleted");
         delete $chans{$channel};
         $irc->plugin_del('AutoJoin');
-        $autojoin = $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans));
+        $autojoin = $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans, RejoinOnKick => 1));
         $irc->yield( part => $channel);
     } else  {
         $dbh->rollback;
@@ -1733,6 +1733,8 @@ sub trivia_score {
     my @prams = @_;
     my $channel  = $prams[1];
     my $nick = $prams[2];
+
+    
 
 }
 
