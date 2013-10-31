@@ -62,6 +62,7 @@ my $trivia_ans = "";
 my $trivia_timeout = 60;
 my $trivia_chan = "";
 
+
 # sub-routines
 sub say($$);
 sub word(@);
@@ -154,7 +155,8 @@ $pmsg_cmd_hash{"del_chanuser"} = sub { del_chanuser(@_); };
 
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_msg irc_ctcp_version irc_nick_sync)], ],
-    inline_states  => { ban_expire => sub { ban_expire(@_); }, trivia_expire => sub { trivia_expire(@_); } },
+    inline_states  => { ban_expire => sub { ban_expire(@_); }, trivia_expire => sub { trivia_expire(@_); },
+                        rss_timer => sub { rss_timer(@_); }},
     heap           => { irc  => $irc },
 );
 
@@ -187,6 +189,7 @@ sub _start {
     );
 
     $kernel->delay('ban_expire', 60);
+    $kernel->delay('rss_timer', 900);
     $irc->yield( register => 'all' );
     $irc->yield( connect  => {} );
 
@@ -1509,6 +1512,26 @@ sub list_chanuser {
 
 }
 
+sub rss_timer {
+     my ( $kernel, $umask, $channel ) = @_[KERNEL,  ARG0, ARG1 ];
+    get_all_rss();
+    $kernel->delay('rss_timer', 900);
+    return;
+}
+
+sub get_all_rss {
+   
+    my $query = q{select DISTINCT nick from rssfeeds; };
+    my $sth = $dbh->prepare($query);
+    my $rv = $sth->execute();
+
+    while ( defined( my $res = $sth->fetchrow_hashref ) ) { 
+        getrss($res->{'nick'});
+}
+}
+
+
+
 sub addrss {
     my @prams = @_;
     my $chan  = $prams[1];
@@ -1597,17 +1620,15 @@ sub add_feed_to_db {
 
 sub getrss {
     my @prams = @_;
-    my $chan  = $prams[1];
-    my $nick = $prams[2];
+    my $nick = $prams[0];
+    if (! $nick) {
+        my $nick = $prams[2];
+    }
    
     my $query = q{select DISTINCT rssurl from rssfeeds where nick = ? };
     my $sth = $dbh->prepare($query);
     $sth->bind_param( 1, $nick );
     my $rv = $sth->execute();
-    if(!$rv)
-    {
-        $irc->yield(privmsg => $nick => "Unable to list channels: " . $sth->errstr);
-    }
     while ( defined( my $res = $sth->fetchrow_hashref ) ) { 
         show_new_feeds($nick, $res->{'rssurl'});
     }
