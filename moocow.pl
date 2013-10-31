@@ -189,7 +189,7 @@ sub _start {
     );
 
     $kernel->delay('ban_expire', 60);
-    $kernel->delay('rss_timer', 30);
+    $kernel->delay('rss_timer', 900);
     $irc->yield( register => 'all' );
     $irc->yield( connect  => {} );
 
@@ -1515,7 +1515,7 @@ sub list_chanuser {
 sub rss_timer {
      my ( $kernel, $umask, $channel ) = @_[KERNEL,  ARG0, ARG1 ];
     get_all_rss();
-    $kernel->delay('rss_timer', 30);
+    $kernel->delay('rss_timer', 900);
     return;
 }
 
