@@ -169,7 +169,7 @@ sub _start {
     
     # retrieve our component's object from the heap where we stashed it
     my $irc = $heap->{irc};
-    $autojoin = $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans ) );
+    $autojoin = $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans, RejoinOnKick => 1 ) );
     $irc->plugin_add(
         'Connector',
         POE::Component::IRC::Plugin::Connector->new(
@@ -946,7 +946,7 @@ sub delchan {
         $irc->yield(privmsg => $who => "Channel deleted");
         delete $chans{$channel};
         $irc->plugin_del('AutoJoin');
-        $autojoin = $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans));
+        $autojoin = $irc->plugin_add( 'AutoJoin', POE::Component::IRC::Plugin::AutoJoin->new( Channels => \%chans, RejoinOnKick => 1));
         $irc->yield( part => $channel);
     } else  {
         $dbh->rollback;
