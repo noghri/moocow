@@ -189,7 +189,7 @@ sub _start {
     );
 
     $kernel->delay('ban_expire', 60);
-    $kernel->delay('rss_timer', 900);
+    $kernel->delay('rss_timer', 30);
     $irc->yield( register => 'all' );
     $irc->yield( connect  => {} );
 
@@ -1515,7 +1515,7 @@ sub list_chanuser {
 sub rss_timer {
      my ( $kernel, $umask, $channel ) = @_[KERNEL,  ARG0, ARG1 ];
     get_all_rss();
-    $kernel->delay('rss_timer', 900);
+    $kernel->delay('rss_timer', 30);
     return;
 }
 
@@ -1527,10 +1527,8 @@ sub get_all_rss {
 
     while ( defined( my $res = $sth->fetchrow_hashref ) ) { 
         getrss($res->{'nick'});
+    }
 }
-}
-
-
 
 sub addrss {
     my @prams = @_;
@@ -1538,6 +1536,10 @@ sub addrss {
     my $nick = $prams[2];
     my @args = split / /, $prams[0];
     my $rssurl = $args[0];
+    my $channel = $args[1];
+    if ($channel) {
+        $nick = $channel;
+    }
     my $xml = get($rssurl);
             #my $rp = new XML::RSS::Parser::Lite;
             #$rp->parse($xml);
