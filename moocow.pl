@@ -129,7 +129,7 @@ $cmd_hash{"words"}     = sub { word(@_); };
 $cmd_hash{"hack"}      = sub { hack(@_); };
 $cmd_hash{"spell"}      = sub { spell(@_); };
 $cmd_hash{"start"}      = sub { start_trivia(@_); };
-$cmd_hash{"stop"}       = sub { stop(@_); };
+$cmd_hash{"stop"}       = sub { stop_trivia(@_); };
 $cmd_hash{"tscore"}      = sub { trivia_score(@_); };
 
 my %pmsg_cmd_hash;
@@ -1723,7 +1723,7 @@ sub stop_trivia {
 
     $trivia_on = 0;
 
-    $irc->yield( privmsg => $trivia_chan => "The game has been stopped. The answer was: $trivia_ans" ); 
+    $irc->yield( privmsg => $trivia_chan => "The game has been stopped." ); 
     $trivia_ans = "";
 
     return;
