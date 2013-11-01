@@ -152,7 +152,11 @@ $pmsg_cmd_hash{"moduser"}       = sub { mod_user(@_); };
 $pmsg_cmd_hash{"listusers"}     = sub { list_users(@_); };
 $pmsg_cmd_hash{"mod_chanuser"}  = sub { mod_chanuser(@_); };
 $pmsg_cmd_hash{"list_chanuser"} = sub { list_chanuser(@_); };
-$pmsg_cmd_hash{"del_chanuser"} = sub { del_chanuser(@_); };
+$pmsg_cmd_hash{"del_chanuser"}	= sub { del_chanuser(@_); };
+$pmsg_cmd_hash{"listmask"} 	= sub { listmask(@_); };
+$pmsg_cmd_hash{"addmask"} 	= sub { addmask(@_); };
+$pmsg_cmd_hash{"delmask"} 	= sub { delmask(@_); };
+
 
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_msg irc_ctcp_version irc_nick_sync)], ],
@@ -1388,6 +1392,99 @@ sub list_users {
     }
 
 }
+
+
+sub addmask {
+    my @prams = @_;
+    my $chan  = $prams[1];
+    my $nick  = $prams[2];
+    my $umask = $prams[3];
+
+    my @args = split / /, $prams[0];
+
+    my $nacl = acl( $nick, $umask );
+
+
+    if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
+        $irc->yield( notice => $nick => "No Access!" );
+        return;
+    }
+
+    my $query = q{INSERT INTO usermask (hostmask, userid) VALUES(?, (SELECT(userid) FROM users WHERE username = ?))};
+    my $sth   = $dbh->prepare($query);
+    if (!$sth) {
+        $irc->yield( privmsg => $chan => "Error preparing insert statement for usermask add: " . $dbh->errstr );
+        $sth->finish;
+        return;
+    }
+
+    $sth->bind_param( 1, $args[1] );
+    $sth->bind_param( 2, $args[0] );
+    my $rv = $sth->execute();
+
+    if ( !$rv ) {
+        $irc->yield( privmsg => $chan => "Error adding usermask: " . $sth->errstr );
+        $sth->finish;
+        return;
+    }
+    if ( $sth->rows > 0 ) {
+        $irc->yield( privmsg => $chan => "Usermask has been added." );
+    }
+
+
+
+}
+
+sub listmask {
+    my @prams = @_;
+    my $chan  = $prams[1];
+    my $nick  = $prams[2];
+    my $umask = $prams[3];
+
+    my @args = split / /, $prams[0];
+    my $nacl = acl( $nick, $umask );
+    if ( !defined($nacl) || $nacl->{'access'} ne "A" ) {
+        $irc->yield( notice => $nick => "No Access!" );
+        return;
+    }
+
+
+    my $query = q{SELECT username, hostmask, maskid FROM users,usermask WHERE users.userid = usermask.userid AND (users.userid = ? OR users.username = ?)};
+    my $sth   = $dbh->prepare($query);
+    if(!$sth) 
+    {
+        $irc->yield(privmsg => $nick => "Unable to prepare query to list user mask: " . $dbh->errstr);
+        return;   
+    }     
+   
+    $sth->bind_param(1, $args[0]);
+    $sth->bind_param(2, $args[0]);
+    
+    my $rv    = $sth->execute();
+    
+    if(!$rv) 
+    {
+        $irc->yield(privmsg => $nick => "Unable to list user mask: " . $sth->errstr);
+        return;
+    }
+    $irc->yield(privmsg => $nick => "Masks for user");
+    while ( defined( my $res = $sth->fetchrow_hashref ) ) {
+
+        my $hmask  = $res->{'hostmask'};
+        my $luser = $res->{'username'};
+        my $maskid = $res->{'maskid'};
+        $irc->yield( privmsg => $nick => "Username: $luser Mask: $hmask MaskID: $maskid" );
+
+    }
+    if(!$sth->rows)
+    {
+        $irc->yield( privmsg => $nick => "No masks found for user");
+    }
+
+}
+
+
+
 
 sub mod_chanuser {
 
