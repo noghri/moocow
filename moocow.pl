@@ -502,6 +502,12 @@ sub weather_extended {
 
     }
 
+    if(!defined($zip))
+    {
+        $irc->yield(notice => $nick => "No default set; use wzd to set");
+        return;
+    }
+
     my $wun = new WWW::Wunderground::API(
         location => $zip,
         api_key  => $apikey,
