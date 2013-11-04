@@ -158,6 +158,15 @@ $pmsg_cmd_hash{"addmask"} 	= sub { addmask(@_); };
 $pmsg_cmd_hash{"delmask"} 	= sub { delmask(@_); };
 
 
+my %codewords;
+$codewords{'pink-ribbons'} = {kickee => 'jchawk', reason => 'PINK RIBBONS!'};
+$codewords{'slacker'} = {kickee => 'ktuli', reason => 'SLACKER!'};
+$codewords{'dirtbag'} = {kickee => 'noghri', reason => 'DIRTBAG!'};
+$codewords{'wonderbread'} = {kickee => 'tonjy', reason => 'WONDERBREAD!!!'};
+$codewords{'dongs'} = {kickee => 'AndroSyn', reason => 'DONGS!!!'};
+
+
+
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_msg irc_ctcp_version irc_nick_sync)], ],
     inline_states  => { ban_expire => sub { ban_expire(@_); }, trivia_expire => sub { trivia_expire(@_); },
@@ -598,13 +607,6 @@ sub codeword {
     my $channel  = $prams[1];
     my $kickee   = $prams[2];
     my $kickres  = "Don't try to make up codewords!";
-    my %codewords;
-    
-    $codewords{'pink-ribbons'} = {kickee => 'jchawk', reason => 'PINK RIBBONS!'};
-    $codewords{'slacker'} = {kickee => 'ktuli', reason => 'SLACKER!'};
-    $codewords{'dirtbag'} = {kickee => 'noghri', reason => 'DIRTBAG!'};
-    $codewords{'wonderbread'} = {kickee => 'tonjy', reason => 'WONDERBREAD!!!'};
-    $codewords{'dongs'} = {kickee => 'AndroSyn', reason => 'DONGS!!!'};
 
     
     if(defined($codewords{$codeword}))
