@@ -19,6 +19,7 @@ use IRC::Utils ':ALL';
 use XML::RSS;
 use LWP::Simple;
 use Text::Aspell;
+use Regexp::Common qw/URI/;
 use constant { MOOVER => q{$Id$} };
 
 $Config::Any::INI::MAP_SECTION_SPACE_TO_NESTED_KEY = 0;
@@ -320,12 +321,15 @@ sub irc_public {
 
     # these techenically will catch the !tu !u2 urls, but the end result is the same for autourl
     if ($autourl) {
-        if ( my ($youtube) = $what =~ /(https?:\/\/(www\.youtube\.com|youtube\.com|youtu\.be)\/.*)/ ) {
-            youtube( $youtube, $channel, $nick, $who );
-            return;
-        }
-        elsif ( my ($gogl) = $what =~ /(https?:\/\/.*)/ ) {
-            gogl( $gogl, $channel, $nick, $who );
+        if ( $what =~ /$RE{URI}{HTTP}{-scheme=>'https?'}{-keep}/ ) {
+            my $url = $1;
+            my $host = $3;
+            if($host =~ /^(www\.youtube\.com|youtube\.com|youtu\.be)$/)
+            {
+              youtube($url, $channel, $nick, $who);
+            } else {
+              gogl( $url, $channel, $nick, $who );
+            }
             return;
         }
     }
@@ -679,6 +683,8 @@ sub gogl_url {
     $req->content("{\"longUrl\": \"$url\"}");
 
     my $res = $ua->request($req);
+    return undef if($res->code != 200);
+    
     my @data = split /\n/, $res->content;
 
     foreach my $line (@data) {
@@ -711,8 +717,14 @@ sub title {
 
     my $ua = LWP::UserAgent::WithCache->new( { 'namespace' => 'moocowlwp_cache', 'default_expires_in' => 3600 } );
     $ua->timeout(10);
+
     my $req = HTTP::Request->new( GET => $url );
+      
+    return undef if(!defined($req));
     my $res = $ua->request($req);
+    
+    return undef if(!defined($res));
+
     my $ctype = $res->header('Content-type');
 
     return undef if(!($ctype =~ /text\/(html|xhtml)/));
