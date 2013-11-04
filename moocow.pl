@@ -247,6 +247,8 @@ sub irc_nick_sync {
     
     return if ( !defined($acl) );
 
+    return if( !defined($acl->{'access'}) );
+
     if ( ( $acl->{'access'} eq "A" ) || ( $acl->{'access'} eq "O" ) ) {
         $irc->yield( mode => $channel => "+o $nick" );
     }
@@ -596,22 +598,25 @@ sub codeword {
     my $channel  = $prams[1];
     my $kickee   = $prams[2];
     my $kickres  = "Don't try to make up codewords!";
+    my %codewords;
+    
+    $codewords{'pink-ribbons'} = {kickee => 'jchawk', reason => 'PINK RIBBONS!'};
+    $codewords{'slacker'} = {kickee => 'ktuli', reason => 'SLACKER!'};
+    $codewords{'dirtbag'} = {kickee => 'noghri', reason => 'DIRTBAG!'};
+    $codewords{'wonderbread'} = {kickee => 'tonjy', reason => 'WONDERBREAD!!!'};
+    $codewords{'dongs'} = {kickee => 'AndroSyn', reason => 'DONGS!!!'};
 
-    if ( $codeword =~ /pink-ribbons/i ) {
-        $kickee  = "jchawk";
-        $kickres = "PINK RIBBONS!";
-    } elsif ( $codeword =~ /slacker/i ) {
-        $kickee  = "ktuli";
-        $kickres = "SLACKER!";
-    } elsif ( $codeword =~ /dirtbag/i ) {
-        $kickee  = "noghri";
-        $kickres = "DIRTBAG!";
-    } elsif ( $codeword =~ /wonderbread/i ) {
-        $kickee  = "tonyj";
-        $kickres = "WONDERBREAD!!!";
-    } elsif ( $codeword =~ /dongs/i ) {
-        $kickee  = "androsyn";
-        $kickres = "DONGS!!!";
+    
+    if(defined($codewords{$codeword}))
+    {
+        $kickee = $codewords{"$codeword"}->{'kickee'};
+        $kickres = $codewords{"$codeword"}->{'reason'}; 
+    } 
+    
+    if(!$irc->is_channel_member($channel, $kickee))
+    {
+        $kickee = $prams[2];
+        $kickres = "Misfire!";
     }
 
     $irc->yield( privmsg => $channel => "EEP!!!" );
@@ -969,7 +974,7 @@ sub delchan {
 
 
 sub listchan {
-    my @prams = @_;
+   my @prams = @_;
     my $who = $prams[1];
     my $nick = $prams[2];
     my $umask = $prams[3];
