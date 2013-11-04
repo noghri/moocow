@@ -329,7 +329,7 @@ sub irc_public {
 sub irc_ctcp_version {
     my ( $sender, $who, $where, $what ) = @_[ SENDER, ARG0 .. ARG2 ];
     $who =~ s/^(.*)!.*$/$1/ or die "Weird who: $who";
-    $irc->yield( ctcp => $who => "VERSION moocow 0.01 - its perl!" );
+    $irc->yield( ctcp => $who => "VERSION moocow " . MOOVER . " - its perl!" );
     return;
 }
 
