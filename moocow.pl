@@ -166,6 +166,15 @@ $pmsg_cmd_hash{"addmask"} 	= sub { addmask(@_); };
 $pmsg_cmd_hash{"delmask"} 	= sub { delmask(@_); };
 
 
+my %codewords;
+$codewords{'pink-ribbons'} = {kickee => 'jchawk', reason => 'PINK RIBBONS!'};
+$codewords{'slacker'} = {kickee => 'ktuli', reason => 'SLACKER!'};
+$codewords{'dirtbag'} = {kickee => 'noghri', reason => 'DIRTBAG!'};
+$codewords{'wonderbread'} = {kickee => 'tonjy', reason => 'WONDERBREAD!!!'};
+$codewords{'dongs'} = {kickee => 'AndroSyn', reason => 'DONGS!!!'};
+
+
+
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_msg irc_ctcp_version irc_nick_sync)], ],
     inline_states  => { ban_expire => sub { ban_expire(@_); }, trivia_expire => sub { trivia_expire(@_); },
@@ -255,6 +264,8 @@ sub irc_nick_sync {
     
     return if ( !defined($acl) );
 
+    return if( !defined($acl->{'access'}) );
+
     if ( ( $acl->{'access'} eq "A" ) || ( $acl->{'access'} eq "O" ) ) {
         $irc->yield( mode => $channel => "+o $nick" );
     }
@@ -335,7 +346,7 @@ sub irc_public {
 sub irc_ctcp_version {
     my ( $sender, $who, $where, $what ) = @_[ SENDER, ARG0 .. ARG2 ];
     $who =~ s/^(.*)!.*$/$1/ or die "Weird who: $who";
-    $irc->yield( ctcp => $who => "VERSION moocow 0.01 - its perl!" );
+    $irc->yield( ctcp => $who => "VERSION moocow " . MOOVER . " - its perl!" );
     return;
 }
 
@@ -605,21 +616,17 @@ sub codeword {
     my $kickee   = $prams[2];
     my $kickres  = "Don't try to make up codewords!";
 
-    if ( $codeword =~ /pink-ribbons/i ) {
-        $kickee  = "jchawk";
-        $kickres = "PINK RIBBONS!";
-    } elsif ( $codeword =~ /slacker/i ) {
-        $kickee  = "ktuli";
-        $kickres = "SLACKER!";
-    } elsif ( $codeword =~ /dirtbag/i ) {
-        $kickee  = "noghri";
-        $kickres = "DIRTBAG!";
-    } elsif ( $codeword =~ /wonderbread/i ) {
-        $kickee  = "tonyj";
-        $kickres = "WONDERBREAD!!!";
-    } elsif ( $codeword =~ /dongs/i ) {
-        $kickee  = "androsyn";
-        $kickres = "DONGS!!!";
+    
+    if(defined($codewords{$codeword}))
+    {
+        $kickee = $codewords{"$codeword"}->{'kickee'};
+        $kickres = $codewords{"$codeword"}->{'reason'}; 
+    } 
+    
+    if(!$irc->is_channel_member($channel, $kickee))
+    {
+        $kickee = $prams[2];
+        $kickres = "Misfire!";
     }
 
     $irc->yield( privmsg => $channel => "EEP!!!" );
@@ -977,7 +984,7 @@ sub delchan {
 
 
 sub listchan {
-    my @prams = @_;
+   my @prams = @_;
     my $who = $prams[1];
     my $nick = $prams[2];
     my $umask = $prams[3];
