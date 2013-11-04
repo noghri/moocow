@@ -62,6 +62,12 @@ my $trivia_ans = "";
 my $trivia_timeout = 60;
 my $trivia_chan = "";
 
+#for TIMEBOMB Game
+my $tb_on = 0;
+my $tb_ans = "";
+my $tb_target = "";
+my $tb_timeout = 10;
+my $tb_chan =  "";
 
 # sub-routines
 sub say($$);
@@ -127,10 +133,12 @@ $cmd_hash{"wzd"}       = sub { weather_default(@_); };
 $cmd_hash{"nhl"}       = sub { nhl_standings(@_); };
 $cmd_hash{"words"}     = sub { word(@_); };
 $cmd_hash{"hack"}      = sub { hack(@_); };
-$cmd_hash{"spell"}      = sub { spell(@_); };
-$cmd_hash{"start"}      = sub { start_trivia(@_); };
-$cmd_hash{"stop"}       = sub { stop_trivia(@_); };
-$cmd_hash{"tscore"}      = sub { trivia_score(@_); };
+$cmd_hash{"spell"}     = sub { spell(@_); };
+$cmd_hash{"start"}     = sub { start_trivia(@_); };
+$cmd_hash{"stop"}      = sub { stop_trivia(@_); };
+$cmd_hash{"tscore"}    = sub { trivia_score(@_); };
+$cmd_hash{"tb"}        = sub { start_timebomb(@_); };
+$cmd_hash{"cut"}       = sub { cut_timebomb(@_); };
 
 my %pmsg_cmd_hash;
 
@@ -161,7 +169,7 @@ $pmsg_cmd_hash{"delmask"} 	= sub { delmask(@_); };
 POE::Session->create(
     package_states => [ main => [qw(_default _start irc_001 irc_public irc_msg irc_ctcp_version irc_nick_sync)], ],
     inline_states  => { ban_expire => sub { ban_expire(@_); }, trivia_expire => sub { trivia_expire(@_); },
-                        rss_timer => sub { rss_timer(@_); }},
+                        timebomb_expire => sub { timebomb_expire(@_); }, rss_timer => sub { rss_timer(@_); }},
     heap           => { irc  => $irc },
 );
 
@@ -1785,7 +1793,10 @@ sub start_trivia {
     my $nick = $prams[2];
     my $kernel = $prams[4];
 
-    if ($trivia_on) { return; } 
+    if ($trivia_on) { 
+	$irc->yield(privmsg => $channel => "The game is already running... ");
+	return;
+    } 
   
     $trivia_on = 1;
     $trivia_chan = $channel;
@@ -1925,3 +1936,94 @@ sub score_trivia {
     }
 }
 
+sub start_timebomb {
+    my @prams = @_;
+    $tb_target = $prams[0];
+    my $channel  = $prams[1];
+    my $nick = $prams[2];
+    my $kernel = $prams[4];
+
+    if ($tb_on) { 
+	$irc->yield(privmsg => $channel => "The timebomb is already running... ");
+	return;
+    } 
+  
+    $tb_on = 1;
+    $tb_chan = $channel;
+    $tb_timeout = int(rand(50) + 10);
+
+    my @tb_colors = ('Red','Orange','Yellow','Green','Blue','Violet');
+
+    my $tb_num_choices = int(rand(@tb_colors));
+    if ($tb_num_choices < 2) { $tb_num_choices = 2; }
+
+
+    # Andro - don't fix this just yet, I think I will rewrite with a hash
+    # Andro - don't fix this just yet, I think I will rewrite with a hash
+    # Andro - don't fix this just yet, I think I will rewrite with a hash
+    my @tb_color_choices = ();
+    for (my $i = 0; $i < $tb_num_choices; $i++) {
+      my $rand_color = int(rand($tb_num_choices));
+      my $rand_unique = 0;
+      for (my $j = 0; $j <= $#tb_color_choices; $j++) {
+        if ($rand_color == $tb_color_choices[$j]) {
+          $rand_color = int(rand($tb_num_choices));
+          $j = -1;
+        }
+      }
+      push(@tb_color_choices, $rand_color);
+    }
+
+    $tb_ans = $tb_colors[int(rand(@tb_color_choices))];
+    my $tb_color_string = "";
+    for (my $i = 0; $i < $tb_num_choices; $i++) {
+      $tb_color_string .= $tb_colors[$tb_color_choices[$i]] . ", ";
+    }
+    chop($tb_color_string); chop($tb_color_string);
+
+    $irc->yield( privmsg => $channel => "$tb_target: Timebomb! You have $tb_timeout seconds!");
+    $irc->yield( privmsg => $channel => "$tb_target: Choose which wire to !cut: $tb_color_string");
+    
+    $kernel->delay('timebomb_expire', $tb_timeout);
+
+    return;
+}
+
+sub timebomb_expire {
+
+    if(!$tb_on) { return; }
+
+    $tb_on = 0;
+
+    $irc->yield( privmsg => $tb_chan => "$tb_target: Time's up!" );
+    $irc->yield( kick => $tb_chan => "$tb_target" => "Time's up!  KABOOOOOM!");
+    $tb_ans = "";
+    $tb_target = "";
+
+    return;
+}
+
+sub cut_timebomb {
+    my @prams    = @_;
+    my $guess = $prams[0];
+    my $channel  = $prams[1];
+    my $nick     = $prams[2];
+
+    if (! $tb_on) {
+      return;
+    }
+
+    if ($nick !~ /$tb_target/i) {
+      $irc->yield( privmsg => $tb_chan => "$nick: You're not holding the timebomb, we can send one your way if you like..." );
+      return;
+    }
+
+    if ($guess =~ /$tb_ans/i) {
+      $irc->yield( privmsg => $tb_chan => "$nick: You chose wisely.  Have a nice day!" );
+    } else {
+      $irc->yield( privmsg => $tb_chan => "$nick: You chose poorly...");
+      $irc->yield( kick => $tb_chan => "$tb_target" => "You should have chose $tb_ans!  KABOOOOOM!");
+    }
+    $tb_ans = "";
+    $tb_on = 0;
+}
