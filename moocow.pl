@@ -69,6 +69,7 @@ my $tb_ans = "";
 my $tb_target = "";
 my $tb_timeout = 10;
 my $tb_chan =  "";
+my $tb_sender = "";
 
 # sub-routines
 sub say($$);
@@ -1957,19 +1958,21 @@ sub score_trivia {
 
 sub start_timebomb {
     my @prams = @_;
-    $tb_target = $prams[0];
     my $channel  = $prams[1];
-    my $nick = $prams[2];
-    my $kernel = $prams[4];
 
     if ($tb_on) { 
 	$irc->yield(privmsg => $channel => "The timebomb is already running... ");
 	return;
     } 
   
+    $tb_target = $prams[0];
+    my $nick = $prams[2];
+    my $kernel = $prams[4];
+
     $tb_on = 1;
     $tb_chan = $channel;
     $tb_timeout = int(rand(50) + 10);
+    $tb_sender = $nick;
 
     my @tb_colors = ('Red','Orange','Yellow','Green','Blue','Violet','Indigo','Black','White','Grey','Brown','Pink','Mauve','Beige','Aquamarine','Chartreuse','Bisque','Crimson','Fuchsia','Gold','Ivory','Khaki','Lavender','Lime','Magenta','Maroon','Navy','Olive','Plum','Silver','Tan','Teal','Turquoise');
 
@@ -2011,12 +2014,13 @@ sub timebomb_expire {
 
     if(!$tb_on) { return; }
 
-    $tb_on = 0;
-
     $irc->yield( privmsg => $tb_chan => "$tb_target: Time's up!" );
     $irc->yield( kick => $tb_chan => "$tb_target" => "Time's up!  KABOOOOOM!");
+
+    $tb_on = 0;
     $tb_ans = "";
     $tb_target = "";
+    $tb_sender = "";
 
     return;
 }
@@ -2028,6 +2032,11 @@ sub cut_timebomb {
     my $nick     = $prams[2];
 
     if (! $tb_on) {
+      my $rand_bomb = int(rand(10));
+      if ($rand_bomb > 7) {
+        $irc->yield( privmsg => $channel => "$nick: You should know better than to go cutting wires you don't know what they go to... you've activated a timebomb!" );
+        start_timebomb($nick,$channel,$nick,"",$prams[4]);
+      }
       return;
     }
 
@@ -2037,11 +2046,26 @@ sub cut_timebomb {
     }
 
     if ($guess =~ /$tb_ans/i) {
+      my $rand_bomb = int(rand(20));
+      if ($rand_bomb == 18) {
+        $irc->yield( privmsg => $channel => "$nick: You have disarmed the first timer, but have activated another!" );
+        $tb_on = 0;
+        start_timebomb($nick,$channel,$tb_sender,"",$prams[4]);
+        return;
+      } elsif ($rand_bomb == 19) {
+        $irc->yield( privmsg => $channel => "$tb_sender: Bad news for you!  $nick disarmed the bomb but now you have one to disarm!" );
+        $tb_on = 0;
+        start_timebomb($tb_sender,$channel,$tb_target,"",$prams[4]);
+        return;
+      } else {
       $irc->yield( privmsg => $tb_chan => "$nick: You chose wisely.  Have a nice day!" );
+      }
     } else {
       $irc->yield( privmsg => $tb_chan => "$nick: You chose poorly...");
       $irc->yield( kick => $tb_chan => "$tb_target" => "You should have chose $tb_ans!  KABOOOOOM!");
     }
+    $tb_target = "";
+    $tb_sender = "";
     $tb_ans = "";
     $tb_on = 0;
 }
