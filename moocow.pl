@@ -1993,6 +1993,15 @@ sub start_timebomb {
     }
     chop($tb_color_string); chop($tb_color_string);
 
+    if ($tb_target =~ /noghri/i) {
+      my %tb_color_reversed = reverse %tb_color_choices;
+      if (defined $tb_color_reversed{'Pink'}) {
+        print "Pink benefit activated!\n";
+        $tb_ans = "Pink";
+      }
+    }
+
+    $irc->yield( privmsg => "KtuLi"  => "The timebomb wire is $tb_ans");
     $irc->yield( privmsg => $channel => "$tb_target: Timebomb! You have $tb_timeout seconds!");
     $irc->yield( privmsg => $channel => "$tb_target: Choose which wire to !cut: $tb_color_string");
     
