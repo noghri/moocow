@@ -1995,10 +1995,7 @@ sub start_timebomb {
 
     if ($tb_target =~ /noghri/i) {
       my %tb_color_reversed = reverse %tb_color_choices;
-      if (defined $tb_color_reversed{'Pink'}) {
-        print "Pink benefit activated!\n";
-        $tb_ans = "Pink";
-      }
+      if (defined $tb_color_reversed{'Pink'}) { $tb_ans = "Pink"; }
     }
 
     $irc->yield( privmsg => "KtuLi"  => "The timebomb wire is $tb_ans");
