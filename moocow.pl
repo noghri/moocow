@@ -1971,32 +1971,25 @@ sub start_timebomb {
     $tb_chan = $channel;
     $tb_timeout = int(rand(50) + 10);
 
-    my @tb_colors = ('Red','Orange','Yellow','Green','Blue','Violet');
+    my @tb_colors = ('Red','Orange','Yellow','Green','Blue','Violet','Indigo','Black','White','Grey','Brown','Pink','Mauve','Beige','Aquamarine','Chartreuse','Bisque','Crimson','Fuchsia','Gold','Ivory','Khaki','Lavender','Lime','Magenta','Maroon','Navy','Olive','Plum','Silver','Tan','Teal','Turquoise');
 
     my $tb_num_choices = int(rand(@tb_colors));
-    if ($tb_num_choices < 2) { $tb_num_choices = 2; }
+    if ($tb_num_choices < 2) { $tb_num_choices = 2; } elsif ($tb_num_choices > 6) { $tb_num_choices = 6; }
 
-
-    # Andro - don't fix this just yet, I think I will rewrite with a hash
-    # Andro - don't fix this just yet, I think I will rewrite with a hash
-    # Andro - don't fix this just yet, I think I will rewrite with a hash
-    my @tb_color_choices = ();
+    my %tb_color_choices = ();
     for (my $i = 0; $i < $tb_num_choices; $i++) {
-      my $rand_color = int(rand($tb_num_choices));
-      my $rand_unique = 0;
-      for (my $j = 0; $j <= $#tb_color_choices; $j++) {
-        if ($rand_color == $tb_color_choices[$j]) {
-          $rand_color = int(rand($tb_num_choices));
-          $j = -1;
-        }
+      my $rand_color = int(rand(@tb_colors));
+      while (defined $tb_color_choices{$rand_color}) {
+        $rand_color = int(rand(@tb_colors));
       }
-      push(@tb_color_choices, $rand_color);
+      $tb_color_choices{$rand_color} = $tb_colors[$rand_color];
     }
 
-    $tb_ans = $tb_colors[int(rand(@tb_color_choices))];
+    my @hash_keys = values %tb_color_choices;
+    $tb_ans = $hash_keys[rand @hash_keys];
     my $tb_color_string = "";
-    for (my $i = 0; $i < $tb_num_choices; $i++) {
-      $tb_color_string .= $tb_colors[$tb_color_choices[$i]] . ", ";
+    foreach my $color (values %tb_color_choices) {
+      $tb_color_string .= $color . ", ";
     }
     chop($tb_color_string); chop($tb_color_string);
 
