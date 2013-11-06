@@ -2001,7 +2001,6 @@ sub start_timebomb {
       if (defined $tb_color_reversed{'Pink'}) { $tb_ans = "Pink"; }
     }
 
-    $irc->yield( privmsg => "KtuLi"  => "The timebomb wire is $tb_ans");
     $irc->yield( privmsg => $channel => "$tb_target: Timebomb! You have $tb_timeout seconds!");
     $irc->yield( privmsg => $channel => "$tb_target: Choose which wire to !cut: $tb_color_string");
     
