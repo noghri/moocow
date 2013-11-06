@@ -1971,7 +1971,7 @@ sub start_timebomb {
 
     $tb_on = 1;
     $tb_chan = $channel;
-    $tb_timeout = int(rand(50) + 10);
+    $tb_timeout = int(rand(45) + 15);
     $tb_sender = $nick;
 
     my @tb_colors = ('Red','Orange','Yellow','Green','Blue','Violet','Indigo','Black','White','Grey','Brown','Pink','Mauve','Beige','Aquamarine','Chartreuse','Bisque','Crimson','Fuchsia','Gold','Ivory','Khaki','Lavender','Lime','Magenta','Maroon','Navy','Olive','Plum','Silver','Tan','Teal','Turquoise');
