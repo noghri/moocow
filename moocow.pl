@@ -19,6 +19,7 @@ use IRC::Utils ':ALL';
 use XML::RSS;
 use LWP::Simple;
 use Text::Aspell;
+use Business::UPS;
 use Regexp::Common qw/URI/;
 use constant { MOOVER => q{$Id$} };
 
@@ -141,6 +142,8 @@ $cmd_hash{"stop"}      = sub { stop_trivia(@_); };
 $cmd_hash{"tscore"}    = sub { trivia_score(@_); };
 $cmd_hash{"tb"}        = sub { start_timebomb(@_); };
 $cmd_hash{"cut"}       = sub { cut_timebomb(@_); };
+$cmd_hash{"track"}     = sub { track_package(@_); };
+$cmd_hash{"tr"}     = sub { track_package(@_); };
 
 my %pmsg_cmd_hash;
 
@@ -1888,7 +1891,7 @@ sub trivia_score {
     my $res = $sth->fetchrow_hashref;
     my $rowcount = $res->{'count(*)'};
 
-    $query = q{SELECT nick,score from tscores ORDER BY score DESC LIMIT 10};
+    $query = q{SELECT nick,score from tscores ORDER BY CAST (score AS INTEGER) DESC LIMIT 10};
     $sth = $dbh->prepare($query);
     my $rv = $sth->execute();
     if(!$rv) {
@@ -2068,3 +2071,81 @@ sub cut_timebomb {
     $tb_ans = "";
     $tb_on = 0;
 }
+
+sub track_package {
+    my @prams = @_;
+    my $trnum = $prams[0];
+    my $chan  = $prams[1];
+    my $nick  = $prams[2];
+    my $who   = $prams[3];
+    my $nacl  = acl( $nick, $who );
+
+    if ( !defined($nacl) ) {
+        $irc->yield( privmsg => $chan => "No Access!" );
+        return;
+    }
+
+    if ($trnum eq "") {
+        if(!acl($nick, $who))
+        {
+            $irc->yield(notice => $nick => "Must be a user to set tracking default");
+            return;
+        }
+
+        my $query = q{SELECT trdefault FROM users, usermask WHERE username = (SELECT username WHERE usermask.userid == users.userid AND ? GLOB usermask.hostmask)};
+
+        my $sth   = $dbh->prepare($query);
+        if (!$sth) {
+            $irc->yield( privmsg => $chan => "Unable to check tracking default: " . $dbh->errstr);
+            return;
+        }
+        $sth->bind_param( 1, $who );
+        my $rv = $sth->execute();
+        if (!$rv) {
+            $irc->yield( privmsg => $chan => "Unable to check tracking default: " . $sth->errstr );
+        }
+        else {
+            if ( defined( my $res = $sth->fetchrow_hashref ) ) {
+                $trnum = $res->{'trdefault'};
+            }
+        }
+
+        if ($trnum eq "") {
+          $irc->yield( privmsg => $chan => "$nick: You don't have a tracking number stored, use !track [number]" );
+          return;
+        }
+    } else {
+        my $query = q{UPDATE users set trdefault = ? where username = (SELECT username FROM users,usermask WHERE usermask.userid == users.userid AND ? GLOB usermask.hostmask)};
+
+        my $sth = $dbh->prepare($query);
+        if (!$sth) {
+            $irc->yield( privmsg => $chan => "Error updating default: " . $dbh->errstr );
+            return;
+        }
+        $sth->bind_param( 1, $trnum );
+        $sth->bind_param( 2, $who );
+  
+        #DBI::dump_results($sth);
+        my $rv = $sth->execute();
+        if (!$rv) {
+            $irc->yield( privmsg => $chan => "Error updating default: " . $sth->errstr );
+        }
+        else {
+            if ( $sth->rows > 0 ) {
+                $irc->yield( privmsg => $chan => "Default tracking number updated." );
+            }
+        }
+    }
+
+    my %track = track_work($trnum);
+    $irc->yield( privmsg => $chan => "This package is $track{'Current Status'}" );
+}
+
+sub track_work {
+    my @prams = @_;
+    my $trnum = $prams[0];
+
+    my %track = UPStrack($trnum);
+    return %track;
+}
+
