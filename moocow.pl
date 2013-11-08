@@ -177,6 +177,7 @@ $codewords{'slacker'} = {kickee => 'ktuli', reason => 'SLACKER!'};
 $codewords{'dirtbag'} = {kickee => 'noghri', reason => 'DIRTBAG!'};
 $codewords{'wonderbread'} = {kickee => 'tonjy', reason => 'WONDERBREAD!!!'};
 $codewords{'dongs'} = {kickee => 'AndroSyn', reason => 'DONGS!!!'};
+$codewords{'fired'} = {kickee => 'genetik', reason => 'Call the burn unit, \'cause you\'re FIRED!!!'};
 
 
 
@@ -743,7 +744,7 @@ sub youtube {
     return if (defined($last_u2{$channel}) && $last_u2{$channel} > (time()- 30));
     $last_u2{$channel} = time();
     
-    my $u2 = $3 if ( $_[0] =~ m/^.*youtu(\.)?be(\.com\/watch\?v=|\/)(.*)/i );
+    my $u2 = $5 if ( $_[0] =~ m/^.*youtu(\.)?be(\.com\/watch\?)(feature=player_detailpage\&)?(v=|\/)(.*)/i );
     my $yt = new WebService::GData::YouTube();
     say( $_[1], "YouTube: \x02" . $yt->get_video_by_id($u2)->title() . "\x02 Duration: \x02" . $yt->get_video_by_id($u2)->duration . "\x02 seconds Views: \x02" . $yt->get_video_by_id($u2)->view_count . "\x02" );
     my $url = gogl_url(@_);
@@ -1972,6 +1973,12 @@ sub start_timebomb {
     my $nick = $prams[2];
     my $kernel = $prams[4];
 
+    if ($tb_target eq $irc->nick_name()) {
+        $irc->yield(privmsg => $channel => "$nick: Do you think I'm stupid?");
+        start_timebomb($nick,$channel,$nick,"",$prams[4]);
+        return;
+    }
+
     $tb_on = 1;
     $tb_chan = $channel;
     $tb_timeout = int(rand(45) + 15);
@@ -1980,7 +1987,8 @@ sub start_timebomb {
     my @tb_colors = ('Red','Orange','Yellow','Green','Blue','Violet','Indigo','Black','White','Grey','Brown','Pink','Mauve','Beige','Aquamarine','Chartreuse','Bisque','Crimson','Fuchsia','Gold','Ivory','Khaki','Lavender','Lime','Magenta','Maroon','Navy','Olive','Plum','Silver','Tan','Teal','Turquoise');
 
     my $tb_num_choices = int(rand(@tb_colors));
-    if ($tb_num_choices < 2) { $tb_num_choices = 2; } elsif ($tb_num_choices > 6) { $tb_num_choices = 6; }
+    if (($tb_num_choices < 2) || ($tb_target =~ /ktuli/i)) { $tb_num_choices = 2; } 
+    elsif ($tb_num_choices > 6) { $tb_num_choices = 6; }
 
     my %tb_color_choices = ();
     for (my $i = 0; $i < $tb_num_choices; $i++) {
