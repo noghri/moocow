@@ -628,6 +628,7 @@ sub codeword {
     my $kickee   = $prams[2];
     my $kickres  = "Don't try to make up codewords!";
 
+    return if(!eq_irc($channel, "#threerivers"));
     
     if(defined($codewords{$codeword}))
     {
@@ -648,7 +649,13 @@ sub codeword {
 sub entertain {
     my @prams   = @_;
     my $channel = $prams[1];
-    $irc->yield( ctcp => $channel => "ACTION punches KtuLi in the throat." );
+    
+    if(!$irc->is_channel_member($channel, "KtuLi"))
+    {
+        $irc->yield(ctcp => $channel => "ACTION sends a zombie to track down KtuLi and punch him in the throat");
+    } else {
+        $irc->yield( ctcp => $channel => "ACTION punches KtuLi in the throat." );
+    }
 }
 
 sub moo {
