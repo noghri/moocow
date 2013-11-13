@@ -120,7 +120,11 @@ my $irc = POE::Component::IRC::State->spawn(
     Flood   => 0,
 ) or die "Oh noooo! $!";
 
-POE::Component::Client::HTTP->spawn( Alias => 'http_ua' );
+POE::Component::Client::HTTP->spawn(	Alias => 'http_ua', 
+                                        Agent     => 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0)', 
+                                        Protocol  => 'HTTP/1.1',
+                                        Timeout	  => 5,
+                                        );
 
 my %cmd_hash;
 
