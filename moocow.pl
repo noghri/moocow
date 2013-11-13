@@ -687,7 +687,9 @@ sub readconfig {
 sub gogl_got_response {
     my ( $heap, $kernel, $request_packet, $response_packet ) = @_[ HEAP, KERNEL, ARG0, ARG1 ];
     my $http_request = $request_packet->[0];
-    my ( $requrl, $channel, $settitle ) = @{ $request_packet->[1] };
+    my $data = $request_packet->[1];
+    
+    my ( $requrl, $channel, $settitle ) = ($data->{'url'}, $data->{'channel'}, $data->{'settitle'});
     my $http_response = $response_packet->[0];
 
     return if ( $http_response->code != 200 );
@@ -741,7 +743,7 @@ sub gogl {
         inline_states => {
             _start => sub {
                 my ( $kernel, $heap ) = @_[ KERNEL, HEAP ];
-                $kernel->post( 'http_ua' => 'request' => got_response => $req => \@args ),;
+                $kernel->post( 'http_ua' => 'request' => got_response => $req => {url => $url, channel => $channel, settitle => $settitle });
             },
             got_response => sub { gogl_got_response(@_); }
         }
@@ -901,6 +903,45 @@ sub help {
 
 }
 
+sub nhl_standings_response {
+    my ( $heap, $kernel, $request_packet, $response_packet ) = @_[ HEAP, KERNEL, ARG0, ARG1 ];
+    my $http_request  = $request_packet->[0];
+    my $data       = $request_packet->[1];
+    my $http_response = $response_packet->[0];
+
+    my $channel = $data->{'channel'};
+    my $division = $data->{'division'};
+
+    return if ( $http_response->code != 200 );
+
+    return undef if ( !defined($http_response) );
+
+    my @headers = ( "$division", 'GP', 'W', 'L', '.+' );
+
+    my $te = HTML::TableExtract->new(
+        debug     => 0,
+        subtables => 0,
+        automap   => 0,
+        headers   => [@headers]
+    ) || die("Unable create object: $!");
+
+    $te->parse( $http_response->content ) || die("Error: $!");
+    my $format = q{%-7s %-20s %-3s %-3s %-3s %-3s %-3s};
+    my $header = sprintf( $format, "Place", "Team", "GP", "W", "L", "OTL", "P" );
+
+    foreach my $ts ( $te->tables ) {
+        $irc->yield( privmsg => $channel => $header );
+        foreach my $row ( $ts->rows ) {
+            chomp(@$row);
+            my $team = @{$row}[1];
+            $team =~ s/\n//g;
+            my $line = sprintf( $format, @{$row}[0], $team, @{$row}[2], @{$row}[3], @{$row}[4], @{$row}[5], @{$row}[6] );
+            $irc->yield( privmsg => $channel => $line );
+        }
+
+    }
+
+}
 sub nhl_standings {
 
     my @prams    = @_;
@@ -927,35 +968,19 @@ sub nhl_standings {
 
     my $url = "http://www.nhl.com/ice/m_standings.htm?type=DIV";
 
-    my $ua = LWP::UserAgent::WithCache->new( { 'namespace' => 'moocowlwp_cache', 'default_expires_in' => 3600 } );
-    $ua->timeout(5);
     my $req = HTTP::Request->new( GET => $url );
-    my $res = $ua->request($req);
 
-    my @headers = ( "$division", 'GP', 'W', 'L', '.+' );
-
-    my $te = HTML::TableExtract->new(
-        debug     => 0,
-        subtables => 0,
-        automap   => 0,
-        headers   => [@headers]
-    ) || die("Unable create object: $!");
-
-    $te->parse( $res->content ) || die("Error: $!");
-    my $format = q{%-7s %-20s %-3s %-3s %-3s %-3s %-3s};
-    my $header = sprintf( $format, "Place", "Team", "GP", "W", "L", "OTL", "P" );
-
-    foreach my $ts ( $te->tables ) {
-        $irc->yield( privmsg => $chan => $header );
-        foreach my $row ( $ts->rows ) {
-            chomp(@$row);
-            my $team = @{$row}[1];
-            $team =~ s/\n//g;
-            my $line = sprintf( $format, @{$row}[0], $team, @{$row}[2], @{$row}[3], @{$row}[4], @{$row}[5], @{$row}[6] );
-            $irc->yield( privmsg => $chan => $line );
+    POE::Session->create(
+        inline_states => {
+            _start => sub {
+                my ( $kernel, $heap ) = @_[ KERNEL, HEAP ];
+                $kernel->post( 'http_ua' => 'request' => got_response => $req => { channel => $chan, division => $division } );
+            },
+            got_response => sub { nhl_standings_response(@_); }
         }
+    );
 
-    }
+
 
 }
 
