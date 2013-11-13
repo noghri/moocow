@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use POE qw(Component::IRC Component::IRC::State Component::IRC::Plugin::AutoJoin Component::IRC::Plugin::Connector Component::IRC::Plugin::NickReclaim Component::IRC::Plugin::CTCP);
+use POE qw(Component::IRC Component::IRC::State Component::IRC::Plugin::AutoJoin Component::IRC::Plugin::Connector Component::IRC::Plugin::NickReclaim Component::IRC::Plugin::CTCP Component::Client::HTTP);
 use Getopt::Std;
 use WebService::GData::YouTube;
 use DBI;
@@ -119,6 +119,9 @@ my $irc = POE::Component::IRC::State->spawn(
     Debug   => 1,
     Flood   => 0,
 ) or die "Oh noooo! $!";
+
+
+POE::Component::Client::HTTP->spawn(Alias => 'http_ua');
 
 my %cmd_hash;
 
@@ -675,68 +678,89 @@ sub readconfig {
     return $ini->{$configtext};
 }
 
-sub gogl_url {
-    my @prams   = @_;
-    my $url     = $prams[0];
-    my $channel = $prams[1];
-    my $goglurl = "https://www.googleapis.com/urlshortener/v1/url";
 
-    my $ua = LWP::UserAgent->new;
-    $ua->timeout(10);
-    my $req = HTTP::Request->new( POST => $goglurl );
-    $req->content_type('application/json');
-    $req->content("{\"longUrl\": \"$url\"}");
+sub gogl_got_response {
+    my ($heap, $kernel, $request_packet, $response_packet) = @_[HEAP, KERNEL, ARG0, ARG1];
+    my $http_request  = $request_packet->[0];
+    my ($channel, $requrl) = @{$request_packet->[1]};
+    my $http_response = $response_packet->[0];
 
-    my $res = $ua->request($req);
-    return undef if($res->code != 200);
-    
-    my @data = split /\n/, $res->content;
+    return if($http_response->code != 200);
+    my @data = split /\n/, $http_response->content;
 
     foreach my $line (@data) {
 
         chomp($line);
         if ( $line =~ /\"id\": \"(.*)\"/ ) {
-            return $1;
+            my $url = $1;
+            return if(!defined($url));
+            $irc->yield(privmsg => $channel, $url);
+            title($requrl, $channel) if (defined($requrl));
+            return;
         }
     }
-    return undef;
 }
 
-sub gogl {
-    my $url     = gogl_url(@_);
-    my $channel = $_[1];
 
-    return if (defined($last_gogl{$channel}) && $last_gogl{$channel} > (time()- 30));
-    $last_gogl{$channel} = time();
+sub title_got_response {
+    my ($heap, $kernel, $request_packet, $response_packet) = @_[HEAP, KERNEL, ARG0, ARG1];
+    my $http_request  = $request_packet->[0];
+    my $channel = $request_packet->[1];
+    my $http_response = $response_packet->[0];
 
-    $irc->yield( privmsg => $channel => $url ) if ( defined($url) );
-    my $title = title($url);
-    $irc->yield( privmsg => $channel => title($url) ) if ( defined($title) );
-
-}
-
-sub title {
-
-    my @prams = @_;
-    my $url   = $prams[0];
-
-    my $ua = LWP::UserAgent::WithCache->new( { 'namespace' => 'moocowlwp_cache', 'default_expires_in' => 3600 } );
-    $ua->timeout(10);
-
-    my $req = HTTP::Request->new( GET => $url );
-      
-    return undef if(!defined($req));
-    my $res = $ua->request($req);
+    return if($http_response->code != 200);
     
-    return undef if(!defined($res));
-
-    my $ctype = $res->header('Content-type');
+    return undef if(!defined($http_response));
+    my $ctype = $http_response->header('Content-type');
 
     return undef if(!($ctype =~ /text\/(html|xhtml)/));
 
     my $p = HTML::HeadParser->new;
-    $p->parse($res->content);
-    return($p->header('Title'));
+    $p->parse($http_response->content);
+    my $title = $p->header('Title');
+    $irc->yield(privmsg => $channel, $title) if(defined($title));
+}
+
+
+sub gogl {
+    my $channel = $_[1];
+    my $url     = $_[0];
+    my @args = ($channel, $url);
+    return if (defined($last_gogl{$channel}) && $last_gogl{$channel} > (time()- 30));
+    $last_gogl{$channel} = time();
+
+    my $goglurl = "https://www.googleapis.com/urlshortener/v1/url";
+
+    my $req = HTTP::Request->new( POST => $goglurl );
+    $req->content_type('application/json');
+    $req->content("{\"longUrl\": \"$url\"}");
+    POE::Session->create(
+    inline_states => {
+      _start => sub {
+        my ($kernel, $heap) = @_[KERNEL, HEAP];
+        $kernel->post('http_ua' => 'request' =>  got_response => $req => \@args ), 
+      }, 
+    got_response => sub { gogl_got_response(@_); }
+    }
+    );
+}
+
+sub title {
+    my @prams = @_;
+    my $url   = $prams[0];
+    my $channel = $prams[1];
+    my $req = HTTP::Request->new( GET => $url );
+      
+    return undef if(!defined($req));
+    POE::Session->create(
+    inline_states => {
+      _start => sub {
+        my ($kernel, $heap) = @_[KERNEL, HEAP];
+        $kernel->post('http_ua' => 'request' =>  got_response => $req => $channel ), 
+      }, 
+    got_response => sub { title_got_response(@_); }
+    }
+    );
 }
 
 sub youtube {
