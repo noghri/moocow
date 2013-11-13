@@ -1987,7 +1987,7 @@ sub start_timebomb {
     my @tb_colors = ('Red','Orange','Yellow','Green','Blue','Violet','Indigo','Black','White','Grey','Brown','Pink','Mauve','Beige','Aquamarine','Chartreuse','Bisque','Crimson','Fuchsia','Gold','Ivory','Khaki','Lavender','Lime','Magenta','Maroon','Navy','Olive','Plum','Silver','Tan','Teal','Turquoise');
 
     my $tb_num_choices = int(rand(@tb_colors));
-    if (($tb_num_choices < 2) || ($tb_target =~ /ktuli/i)) { $tb_num_choices = 2; } 
+    if ($tb_num_choices < 2) { $tb_num_choices = 2; } 
     elsif ($tb_num_choices > 6) { $tb_num_choices = 6; }
 
     my %tb_color_choices = ();
