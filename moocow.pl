@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use POE qw(Component::IRC Component::IRC::State Component::IRC::Plugin::AutoJoin Component::IRC::Plugin::Connector Component::IRC::Plugin::NickReclaim Component::IRC::Plugin::CTCP Component::Client::HTTP);
 use Getopt::Std;
-use WebService::GData::YouTube;
+use JSON::Any;
 use DBI;
 use POSIX;
 use Config::Any;
@@ -130,7 +130,7 @@ $cmd_hash{"entertain"} = sub { entertain(@_); };
 $cmd_hash{"quote"}     = sub { quote(@_); };
 $cmd_hash{"addquote"}  = sub { addquote(@_); };
 $cmd_hash{"moo"}       = sub { moo(@_); };
-$cmd_hash{"tu"}        = sub { gogl(@_); };
+$cmd_hash{"tu"}        = sub { gogl_title(@_); };
 $cmd_hash{"u2"}        = sub { youtube(@_); };
 $cmd_hash{"help"}      = sub { help(@_); };
 $cmd_hash{"codeword"}  = sub { codeword(@_); };
@@ -336,7 +336,7 @@ sub irc_public {
             {
               youtube($url, $channel, $nick, $who);
             } else {
-              gogl( $url, $channel, $nick, $who );
+              gogl_title( $url, $channel, $nick, $who);
             }
             return;
         }
@@ -682,7 +682,7 @@ sub readconfig {
 sub gogl_got_response {
     my ($heap, $kernel, $request_packet, $response_packet) = @_[HEAP, KERNEL, ARG0, ARG1];
     my $http_request  = $request_packet->[0];
-    my ($channel, $requrl) = @{$request_packet->[1]};
+    my ($requrl, $channel, $settitle) = @{$request_packet->[1]};
     my $http_response = $response_packet->[0];
 
     return if($http_response->code != 200);
@@ -695,7 +695,7 @@ sub gogl_got_response {
             my $url = $1;
             return if(!defined($url));
             $irc->yield(privmsg => $channel, $url);
-            title($requrl, $channel) if (defined($requrl));
+            title($requrl, $channel) if (defined($requrl) && $settitle == 1);
             return;
         }
     }
@@ -722,10 +722,16 @@ sub title_got_response {
 }
 
 
+sub gogl_title 
+{
+    my ($url, $channel, $nick, $who) = @_;
+    gogl($url, $channel, 1);
+}
+
+
 sub gogl {
-    my $channel = $_[1];
-    my $url     = $_[0];
-    my @args = ($channel, $url);
+    my @args = my ($url, $channel, $settitle) = @_;
+#    my @args = ($url, $channel, $settitle);
     return if (defined($last_gogl{$channel}) && $last_gogl{$channel} > (time()- 30));
     $last_gogl{$channel} = time();
 
@@ -763,16 +769,52 @@ sub title {
     );
 }
 
+
+sub youtube_got_response {
+    my ($heap, $kernel, $request_packet, $response_packet) = @_[HEAP, KERNEL, ARG0, ARG1];
+    my $http_request  = $request_packet->[0];
+    my ($channel, $url) = @{$request_packet->[1]};
+    my $http_response = $response_packet->[0];
+
+    return if($http_response->code != 200);
+    
+    return undef if(!defined($http_response));
+    my $ctype = $http_response->header('Content-type');
+    print "Data from youtube response: $ctype\n";
+    return undef if(!($ctype =~ /application\/json/));
+    
+    my $j = JSON::Any->new;
+    my $yt = $j->decode($http_response->content);
+    $yt = $yt->{'entry'};
+    my $line = "YouTube: \x02 " . $yt->{'title'}{'$t'} . "\x02 Duration: \x02" . $yt->{'media$group'}{'yt$duration'}{'seconds'}  . "\x02 seconds Views: \x02" . $yt->{'yt$statistics'}{'viewCount'} . "\x02"; 
+    $irc->yield(privmsg => $channel, $line);   
+    gogl($url, $channel, 0);
+}
+
+
+
+
 sub youtube {
-    my $channel = $_[1];
+    my ($url, $channel, $nick, $who) = @_;
     return if (defined($last_u2{$channel}) && $last_u2{$channel} > (time()- 30));
     $last_u2{$channel} = time();
     
-    my $u2 = $5 if ( $_[0] =~ m/^.*youtu(\.)?be(\.com\/watch\?)(feature=player_detailpage\&)?(v=|\/)(.*)/i );
-    my $yt = new WebService::GData::YouTube();
-    say( $_[1], "YouTube: \x02" . $yt->get_video_by_id($u2)->title() . "\x02 Duration: \x02" . $yt->get_video_by_id($u2)->duration . "\x02 seconds Views: \x02" . $yt->get_video_by_id($u2)->view_count . "\x02" );
-    my $url = gogl_url(@_);
-    say( $_[1], $url ) if ( defined($url) );
+    my $u2 = $5 if ( $url =~ m/^.*youtu(\.)?be(\.com\/watch\?)(feature=player_detailpage\&)?(v=|\/)(.*)/i );
+    
+    my $query = "http://gdata.youtube.com/feeds/api/videos/${u2}?strict=true&alt=json&prettyprint=false&v=2";
+    my $req = HTTP::Request->new(GET => $query);
+
+    return undef if(!defined($req));
+    POE::Session->create(
+    inline_states => {
+      _start => sub {
+        my ($kernel, $heap) = @_[KERNEL, HEAP];
+        my @args = ($channel, $url);
+        $kernel->post('http_ua' => 'request' =>  got_response => $req => \@args ), 
+      }, 
+    got_response => sub { youtube_got_response(@_); }
+    }
+    );
 }
 
 sub say($$) {    # just to minimize typing
