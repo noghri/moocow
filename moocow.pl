@@ -2043,7 +2043,7 @@ sub start_timebomb {
         'Magenta', 'Maroon', 'Navy',       'Olive',      'Plum',   'Silver',  'Tan',     'Teal',  'Turquoise'
     );
 
-    my $tb_num_choices = int( rand(@tb_colors) );
+    my $tb_num_choices = int( rand(8) );
     if ( ( $tb_num_choices < 2 ) || ( $tb_target =~ /ktuli/i ) ) { $tb_num_choices = 12; }
     elsif ( $tb_num_choices > 6 ) { $tb_num_choices = 6; }
 
