@@ -778,7 +778,6 @@ sub youtube_got_response {
 
     return undef if ( !defined($http_response) );
     my $ctype = $http_response->header('Content-type');
-    print "Data from youtube response: $ctype\n";
     return undef if ( !( $ctype =~ /application\/json/ ) );
 
     my $j  = JSON::Any->new;
