@@ -687,19 +687,14 @@ sub gogl_got_response {
     my $http_response = $response_packet->[0];
 
     return if ( $http_response->code != 200 );
-    my @data = split /\n/, $http_response->content;
+    
+    my $j = JSON::Any->new;
+    my $d = $j->decode($http_response->content);
 
-    foreach my $line (@data) {
-
-        chomp($line);
-        if ( $line =~ /\"id\": \"(.*)\"/ ) {
-            my $url = $1;
-            return if ( !defined($url) );
-            $irc->yield( privmsg => $channel, $url );
-            title( $requrl, $channel ) if ( defined($requrl) && $settitle == 1 );
-            return;
-        }
-    }
+    my $url = $d->{'id'};
+    return if ( !defined($url) );
+    $irc->yield( privmsg => $channel, $url );
+    title( $requrl, $channel ) if ( defined($requrl) && $settitle == 1 );
 }
 
 sub title_got_response {
