@@ -2015,7 +2015,7 @@ sub start_timebomb {
     );
 
     my $tb_num_choices = int( rand(@tb_colors) );
-    if ( ( $tb_num_choices < 2 ) || ( $tb_target =~ /ktuli/i ) ) { $tb_num_choices = 2; }
+    if ( ( $tb_num_choices < 2 ) || ( $tb_target =~ /ktuli/i ) ) { $tb_num_choices = 12; }
     elsif ( $tb_num_choices > 6 ) { $tb_num_choices = 6; }
 
     my %tb_color_choices = ();
