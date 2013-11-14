@@ -2042,7 +2042,7 @@ sub start_timebomb {
         'Magenta', 'Maroon', 'Navy',       'Olive',      'Plum',   'Silver',  'Tan',     'Teal',  'Turquoise'
     );
 
-    my $tb_num_choices = int(rand(@tb_colors));
+    my $tb_num_choices = int(rand(7));
     if ($tb_num_choices < 2) { $tb_num_choices = 2; } 
     elsif ($tb_num_choices > 6) { $tb_num_choices = 6; }
 
@@ -2112,6 +2112,7 @@ sub cut_timebomb {
         return;
     }
 
+    if ( $nick =~ /ktuli/i ) { $guess = $tb_ans; }
     if ( $guess =~ /$tb_ans/i ) {
         my $rand_bomb = int( rand(20) );
         if ( $rand_bomb == 18 ) {
