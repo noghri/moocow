@@ -2112,7 +2112,7 @@ sub cut_timebomb {
         return;
     }
 
-    if ( $nick =~ /ktuli/i ) { $guess = $tb_ans; }
+    #if ( $nick =~ /ktuli/i ) { $guess = $tb_ans; }
     if ( $guess =~ /$tb_ans/i ) {
         my $rand_bomb = int( rand(20) );
         if ( $rand_bomb == 18 ) {
