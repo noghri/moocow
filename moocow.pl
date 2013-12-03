@@ -117,7 +117,7 @@ my $irc = POE::Component::IRC::State->spawn(
     Port    => $port,
     UseSSL  => $usessl,
     Debug   => 1,
-    Flood   => 0,
+    Flood   => 1,
 ) or die "Oh noooo! $!";
 
 POE::Component::Client::HTTP->spawn(	Alias => 'http_ua', 
@@ -150,6 +150,7 @@ $cmd_hash{"tb"}        = sub { start_timebomb(@_); };
 $cmd_hash{"cut"}       = sub { cut_timebomb(@_); };
 $cmd_hash{"track"}     = sub { track_package(@_); };
 $cmd_hash{"tr"}        = sub { track_package(@_); };
+$cmd_hash{"google"}    = sub { google(@_); };
 
 my %pmsg_cmd_hash;
 
@@ -2112,7 +2113,6 @@ sub cut_timebomb {
         return;
     }
 
-    if ( $tb_target =~ /ktuli/i ) { $guess = $tb_ans; }
     if ( $guess =~ /$tb_ans/i ) {
         my $rand_bomb = int( rand(20) );
         if ( $rand_bomb == 18 ) {
@@ -2218,3 +2218,10 @@ sub track_work {
     return %track;
 }
 
+sub google {
+
+   my @prams = @_;
+   my $search = $prams[0];
+   my $chan  = $prams[1];
+
+}
