@@ -916,32 +916,68 @@ sub nhl_standings_response {
 
     return undef if ( !defined($http_response) );
 
-    my @headers = ( "$division", 'GP', 'W', 'L', '.+' );
-
-    my $te = HTML::TableExtract->new(
-        debug     => 0,
-        subtables => 0,
-        automap   => 0,
-        headers   => [@headers]
-    ) || die("Unable create object: $!");
-
-    $te->parse( $http_response->content ) || die("Error: $!");
-    my $format = q{%-7s %-20s %-3s %-3s %-3s %-3s %-3s};
-    my $header = sprintf( $format, "Place", "Team", "GP", "W", "L", "OTL", "P" );
-
-    foreach my $ts ( $te->tables ) {
-        $irc->yield( privmsg => $channel => $header );
-        foreach my $row ( $ts->rows ) {
-            chomp(@$row);
-            my $team = @{$row}[1];
-            $team =~ s/\n//g;
-            my $line = sprintf( $format, @{$row}[0], $team, @{$row}[2], @{$row}[3], @{$row}[4], @{$row}[5], @{$row}[6] );
-            $irc->yield( privmsg => $channel => $line );
-        }
-
+    my $conference;
+    my @div_list;
+    if ($division eq "eastern") {
+      $conference = $division;
+      @div_list = ('atlantic','metropolitan','wild card');
+    } elsif ($division eq "western") {
+      $conference = $division;
+      @div_list = ('central','pacific','wild card');
+    } else {
+      $conference = "";
+      @div_list = ($division);
     }
 
+    my $first_wc = 0;
+    my $print_wc = 0;
+    foreach my $division (@div_list) {
+      my @headers = ( "$division", 'GP', 'W', 'L', '.+' );
+
+      my $te = HTML::TableExtract->new(
+          debug     => 0,
+          subtables => 0,
+          automap   => 0,
+          headers   => [@headers]
+      ) || die("Unable create object: $!");
+  
+      $te->parse( $http_response->content ) || die("Error: $!");
+      my $format = q{%-12s %-20s %-3s %-3s %-3s %-3s %-3s};
+      my $header = sprintf( $format, "$division", "Team", "GP", "W", "L", "OTL", "P" );
+  
+      foreach my $ts ( $te->tables ) {
+          if (($conference eq "eastern") && ($division eq "wild card") && ($first_wc == 0)) {
+            $first_wc++;
+            $print_wc = 1;
+          } elsif (($conference eq "western") && ($division eq "wild card") && ($first_wc > 0)) {
+            $first_wc++;
+            $print_wc = 1;
+          } elsif ($division eq "wild card") {
+            $print_wc = 0;
+          }
+          if (($division eq "wild card") && ($print_wc != 1)) {
+            $first_wc++;
+            next;
+          }
+          $irc->yield( privmsg => $channel => $header );
+          my $line_count = 0;
+          foreach my $row ( $ts->rows ) {
+              if (($division eq "wild card") && ($line_count >= 4)) {
+                last;
+              }
+              chomp(@$row);
+              my $team = @{$row}[1];
+              $team =~ s/\n//g;
+              my $line = sprintf( $format, @{$row}[0], $team, @{$row}[2], @{$row}[3], @{$row}[4], @{$row}[5], @{$row}[6] );
+              $irc->yield( privmsg => $channel => $line );
+              $line_count++;
+          }
+  
+      }
+    }
 }
+
+
 sub nhl_standings {
 
     my @prams    = @_;
@@ -949,8 +985,8 @@ sub nhl_standings {
     my $chan     = $prams[1];
     my $nick     = $prams[2];
 
-    return if ( defined( $last_nhl{$chan} ) && $last_nhl{$chan} > ( time() - 60 ) );
-    return if ( $division eq "" );
+    #return if ( defined( $last_nhl{$chan} ) && $last_nhl{$chan} > ( time() - 60 ) );
+    #return if ( $division eq "" );
 
     $last_nhl{$chan} = time();
 
@@ -960,13 +996,21 @@ sub nhl_standings {
     if (   ( $division ne "atlantic" )
         && ( $division ne "pacific" )
         && ( $division ne "central" )
-        && ( $division ne "metropolitan" ) )
+        && ( $division ne "metropolitan" )
+        && ( $division ne "wild card" ) 
+        && ( $division ne "eastern" ) 
+        && ( $division ne "western" ) )
     {
         $irc->yield( notice => $nick => "You must not know about the new divisions or something!" );
         return;
     }
 
-    my $url = "http://www.nhl.com/ice/m_standings.htm?type=DIV";
+    my $url = "";
+    if ( ($division eq "eastern") || ($division eq "western") ) {
+        $url = "http://www.nhl.com/ice/m_standings.htm?type=WC";
+    } else {
+        $url = "http://www.nhl.com/ice/m_standings.htm?type=DIV";
+    }
 
     my $req = HTTP::Request->new( GET => $url );
 
@@ -979,9 +1023,6 @@ sub nhl_standings {
             got_response => sub { nhl_standings_response(@_); }
         }
     );
-
-
-
 }
 
 sub delchan {
@@ -2032,7 +2073,7 @@ sub start_timebomb {
         return;
     }
 
-    if ( $tb_target eq $irc->nick_name() ) {
+    if (( $tb_target eq $irc->nick_name() ) || ( $tb_target =~ /^kt/i)) {
         $irc->yield( privmsg => $channel => "$nick: Do you think I'm stupid?" );
         start_timebomb( $nick, $channel, $nick, "", $prams[4] );
         return;
