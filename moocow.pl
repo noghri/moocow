@@ -2025,6 +2025,12 @@ sub start_timebomb {
     my $nick   = $prams[2];
     my $kernel = $prams[4];
 
+    if ( ! $irc->is_channel_member($channel,$tb_target) ) {
+        $irc->yield( privmsg => $channel => "$nick: $tb_target is not in the channel, you must want the timebomb..." );
+        start_timebomb( $nick, $channel, $nick, "", $prams[4] );
+        return;
+    }
+
     if ( $tb_target eq $irc->nick_name() ) {
         $irc->yield( privmsg => $channel => "$nick: Do you think I'm stupid?" );
         start_timebomb( $nick, $channel, $nick, "", $prams[4] );
