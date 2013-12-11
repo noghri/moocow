@@ -117,7 +117,7 @@ my $irc = POE::Component::IRC::State->spawn(
     Port    => $port,
     UseSSL  => $usessl,
     Debug   => 1,
-    Flood   => 1,
+    Flood   => 0,
 ) or die "Oh noooo! $!";
 
 POE::Component::Client::HTTP->spawn(	Alias => 'http_ua', 
@@ -1032,7 +1032,7 @@ sub nhl_standings {
     my $chan     = $prams[1];
     my $nick     = $prams[2];
 
-    #return if ( defined( $last_nhl{$chan}{$nick} ) && $last_nhl{$chan}{$nick} > ( time() - 60 ) );
+    return if ( defined( $last_nhl{$chan}{$nick} ) && $last_nhl{$chan}{$nick} > ( time() - 60 ) );
     if ( $request eq "" ) {
         $irc->yield( notice => $nick => "You need to provide an argument.  Example: !nhl [division|conference|goals|assists|points|+-|save%|gaa|shutouts|wins]" );
         return;
