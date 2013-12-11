@@ -985,19 +985,20 @@ sub nhl_standings {
     my $chan     = $prams[1];
     my $nick     = $prams[2];
 
-    #return if ( defined( $last_nhl{$chan} ) && $last_nhl{$chan} > ( time() - 60 ) );
-    #return if ( $division eq "" );
+    return if ( defined( $last_nhl{$chan} ) && $last_nhl{$chan} > ( time() - 60 ) );
+    return if ( $division eq "" );
 
     $last_nhl{$chan} = time();
 
     $division = lc($division);
     $division = "metropolitan" if ( $division eq "patrick" );
+    $division = "eastern" if ( $division eq "east" );
+    $division = "western" if ( $division eq "west" );
 
     if (   ( $division ne "atlantic" )
         && ( $division ne "pacific" )
         && ( $division ne "central" )
         && ( $division ne "metropolitan" )
-        && ( $division ne "wild card" ) 
         && ( $division ne "eastern" ) 
         && ( $division ne "western" ) )
     {
@@ -2073,7 +2074,7 @@ sub start_timebomb {
         return;
     }
 
-    if (( $tb_target eq $irc->nick_name() ) || ( $tb_target =~ /^kt/i)) {
+    if ( $tb_target eq $irc->nick_name() ) {
         $irc->yield( privmsg => $channel => "$nick: Do you think I'm stupid?" );
         start_timebomb( $nick, $channel, $nick, "", $prams[4] );
         return;
