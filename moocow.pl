@@ -875,7 +875,7 @@ sub help {
     $irc->yield( notice => $nick => "!codeword <codeword>: Special codeword actions." );
     $irc->yield( notice => $nick => "!quote: Display random quote" );
     $irc->yield( notice => $nick => "!addquote <quote>: add a new quote" );
-    $irc->yield( notice => $nick => "!nhl: nhl standings" );
+    $irc->yield( notice => $nick => "!nhl <division|conference|stat|help>: nhl standings and stats" );
     $irc->yield( notice => $nick => "!word: word scramble game" );
     $irc->yield( notice => $nick => "!moo: moo." );
     $irc->yield( notice => $nick => "!addrss <rssurl>: add rss feed." );
@@ -1034,7 +1034,7 @@ sub nhl_standings {
 
     return if ( defined( $last_nhl{$chan}{$nick} ) && $last_nhl{$chan}{$nick} > ( time() - 60 ) );
     if ( $request eq "" ) {
-        $irc->yield( notice => $nick => "You need to provide an argument.  Example: !nhl [division|conference|goals|assists|points|+-|save%|gaa|shutouts|wins]" );
+        $irc->yield( notice => $nick => "Usage: !nhl <division|conference|stat|help>" );
         return;
     }
     $last_nhl{$chan}{$nick} = time();
@@ -1101,8 +1101,14 @@ sub nhl_standings {
                 got_response => sub { nhl_leaderboard_response(@_); }
             }
         );
+    } elsif ( $request eq "help" ) {
+        $irc->yield( notice => $nick => "Usage: !nhl <division|conference|stat|help>" );
+        $irc->yield( notice => $nick => "          division   = metropolitan | atlantic | central | pacific ");
+        $irc->yield( notice => $nick => "          conference = east | west" );
+        $irc->yield( notice => $nick => "          stat       = points | goals | assists | +/- | save% | gaa | shutouts | wins" );
+        $irc->yield( notice => $nick => "          help       = display this help message" );
     } else {
-        $irc->yield( notice => $nick => "You need to provide an argument.  Example: !nhl [division|conference|goals|assists|points|+-|save%|gaa|shutouts|wins]" );
+        $irc->yield( notice => $nick => "Usage: !nhl <division|conference|stat|help>" );
         return;
     }
 }
