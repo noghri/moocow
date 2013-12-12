@@ -2073,7 +2073,7 @@ sub start_timebomb {
         return;
     }
 
-    if (( $tb_target eq $irc->nick_name() ) || ( $tb_target =~ /^kt/i)) {
+    if (( $tb_target eq $irc->nick_name() )) {
         $irc->yield( privmsg => $channel => "$nick: Do you think I'm stupid?" );
         start_timebomb( $nick, $channel, $nick, "", $prams[4] );
         return;
