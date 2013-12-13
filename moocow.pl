@@ -117,7 +117,7 @@ my $irc = POE::Component::IRC::State->spawn(
     Port    => $port,
     UseSSL  => $usessl,
     Debug   => 1,
-    Flood   => 1,
+    Flood   => 0,
 ) or die "Oh noooo! $!";
 
 POE::Component::Client::HTTP->spawn(	Alias => 'http_ua', 
@@ -875,7 +875,7 @@ sub help {
     $irc->yield( notice => $nick => "!codeword <codeword>: Special codeword actions." );
     $irc->yield( notice => $nick => "!quote: Display random quote" );
     $irc->yield( notice => $nick => "!addquote <quote>: add a new quote" );
-    $irc->yield( notice => $nick => "!nhl: nhl standings" );
+    $irc->yield( notice => $nick => "!nhl <division|conference|stat|help>: nhl standings and stats" );
     $irc->yield( notice => $nick => "!word: word scramble game" );
     $irc->yield( notice => $nick => "!moo: moo." );
     $irc->yield( notice => $nick => "!addrss <rssurl>: add rss feed." );
@@ -932,7 +932,7 @@ sub nhl_standings_response {
     my $first_wc = 0;
     my $print_wc = 0;
     foreach my $division (@div_list) {
-      my @headers = ( "$division", 'GP', 'W', 'L', '.+' );
+      my @headers = ( "$division", 'GP', 'W', 'L', '.+', 'ROW' );
 
       my $te = HTML::TableExtract->new(
           debug     => 0,
@@ -942,8 +942,8 @@ sub nhl_standings_response {
       ) || die("Unable create object: $!");
   
       $te->parse( $http_response->content ) || die("Error: $!");
-      my $format = q{%-12s %-20s %-3s %-3s %-3s %-3s %-3s};
-      my $header = sprintf( $format, "$division", "Team", "GP", "W", "L", "OTL", "P" );
+      my $format = q{%-12s %-20s %-3s %-3s %-3s %-3s %-3s %-4s};
+      my $header = sprintf( $format, "$division", "Team", "GP", "W", "L", "OTL", "P", "ROW" );
   
       foreach my $ts ( $te->tables ) {
           if (($conference eq "eastern") && ($division eq "wild card") && ($first_wc == 0)) {
@@ -968,7 +968,7 @@ sub nhl_standings_response {
               chomp(@$row);
               my $team = @{$row}[1];
               $team =~ s/\n//g;
-              my $line = sprintf( $format, @{$row}[0], $team, @{$row}[2], @{$row}[3], @{$row}[4], @{$row}[5], @{$row}[6] );
+              my $line = sprintf( $format, @{$row}[0], $team, @{$row}[2], @{$row}[3], @{$row}[4], @{$row}[5], @{$row}[6], @{$row}[7] );
               $irc->yield( privmsg => $channel => $line );
               $line_count++;
           }
@@ -977,52 +977,140 @@ sub nhl_standings_response {
     }
 }
 
+sub nhl_leaderboard_response {
+    my ( $heap, $kernel, $request_packet, $response_packet ) = @_[ HEAP, KERNEL, ARG0, ARG1 ];
+    my $http_request  = $request_packet->[0];
+    my $data       = $request_packet->[1];
+    my $http_response = $response_packet->[0];
+
+    my $channel = $data->{'channel'};
+    my $request = $data->{'request'};
+    $request = uc($request);
+    $request = "PLUS/MINUS" if ( $request eq "PLUSMINUS" );
+    $request = "SAVE PERCENTAGE" if ( $request eq "SAVEPERCENTAGE" );
+    $request = "GAA" if ( $request eq "GOALSAGAINSTAVERAGE" );
+
+    return if ( $http_response->code != 200 );
+
+    return undef if ( !defined($http_response) );
+
+    my @headers = ( 'RANK', 'PLAYER', 'TEAM', $request );
+
+    my $te = HTML::TableExtract->new(
+        debug     => 0,
+        subtables => 0,
+        automap   => 0,
+        headers   => [@headers]
+    ) || die("Unable create object: $!");
+  
+    $te->parse( $http_response->content ) || die("Error: $!");
+    my $format = q{%-4s %-20s %-8s %-8s};
+    my $header = sprintf( $format, "RANK", "PLAYER", "TEAM", $request );
+  
+    foreach my $ts ( $te->tables ) {
+        my $line_count = 0;
+        foreach my $row ( $ts->rows ) {
+            if ($line_count >= 5) {
+              last;
+            }
+            chomp(@$row);
+            my $rank   = @{$row}[0]; $rank   =~ s/\n//g;
+            my $player = @{$row}[1]; $player =~ s/\n//g;
+            my $team   = @{$row}[2]; $team   =~ s/\n//g;
+            my $value  = @{$row}[3]; $value  =~ s/\n//g;
+            my $line = sprintf( $format, $rank, $player, $team, $value );
+            $irc->yield( privmsg => $channel => $line );
+            $line_count++;
+        }
+    }
+}
 
 sub nhl_standings {
 
     my @prams    = @_;
-    my $division = $prams[0];
+    my $request  = $prams[0];
     my $chan     = $prams[1];
     my $nick     = $prams[2];
 
-    #return if ( defined( $last_nhl{$chan} ) && $last_nhl{$chan} > ( time() - 60 ) );
-    #return if ( $division eq "" );
-
-    $last_nhl{$chan} = time();
-
-    $division = lc($division);
-    $division = "metropolitan" if ( $division eq "patrick" );
-
-    if (   ( $division ne "atlantic" )
-        && ( $division ne "pacific" )
-        && ( $division ne "central" )
-        && ( $division ne "metropolitan" )
-        && ( $division ne "wild card" ) 
-        && ( $division ne "eastern" ) 
-        && ( $division ne "western" ) )
-    {
-        $irc->yield( notice => $nick => "You must not know about the new divisions or something!" );
+    return if ( defined( $last_nhl{$chan}{$nick} ) && $last_nhl{$chan}{$nick} > ( time() - 60 ) );
+    if ( $request eq "" ) {
+        $irc->yield( notice => $nick => "Usage: !nhl <division|conference|stat|help>" );
         return;
     }
+    $last_nhl{$chan}{$nick} = time();
 
-    my $url = "";
-    if ( ($division eq "eastern") || ($division eq "western") ) {
-        $url = "http://www.nhl.com/ice/m_standings.htm?type=WC";
-    } else {
-        $url = "http://www.nhl.com/ice/m_standings.htm?type=DIV";
-    }
 
-    my $req = HTTP::Request->new( GET => $url );
+    $request = lc($request);
+    $request = "metropolitan" if ( $request eq "patrick" );
+    $request = "eastern" if ( $request eq "east" );
+    $request = "western" if ( $request eq "west" );
+    $request = "plusMinus" if ($request eq "plusminus" );
+    $request = "plusMinus" if ($request eq "+-" );
+    $request = "plusMinus" if ($request eq "+/-" );
+    $request = "savePercentage" if ($request eq "save%" );
+    $request = "savePercentage" if ($request eq "savepercentage" );
+    $request = "goalsAgainstAverage" if ($request eq "gaa" );
+    $request = "shutOuts" if ($request eq "shutouts" );
 
-    POE::Session->create(
-        inline_states => {
-            _start => sub {
-                my ( $kernel, $heap ) = @_[ KERNEL, HEAP ];
-                $kernel->post( 'http_ua' => 'request' => got_response => $req => { channel => $chan, division => $division } );
-            },
-            got_response => sub { nhl_standings_response(@_); }
+    if (   ( $request eq "atlantic" )
+        || ( $request eq "pacific" )
+        || ( $request eq "central" )
+        || ( $request eq "metropolitan" )
+        || ( $request eq "eastern" ) 
+        || ( $request eq "western" ) )
+    {
+        my $division = $request;
+
+        my $url = "";
+        if ( ($division eq "eastern") || ($division eq "western") ) {
+            $url = "http://www.nhl.com/ice/m_standings.htm?type=WC";
+        } else {
+            $url = "http://www.nhl.com/ice/m_standings.htm?type=DIV";
         }
-    );
+
+        my $req = HTTP::Request->new( GET => $url );
+    
+        POE::Session->create(
+            inline_states => {
+                _start => sub {
+                    my ( $kernel, $heap ) = @_[ KERNEL, HEAP ];
+                    $kernel->post( 'http_ua' => 'request' => got_response => $req => { channel => $chan, division => $division } );
+                },
+                got_response => sub { nhl_standings_response(@_); }
+            }
+        );
+    } elsif (   ( $request eq "goals" )
+             || ( $request eq "assists") 
+             || ( $request eq "points" )
+             || ( $request eq "plusMinus" )
+             || ( $request eq "savePercentage" )
+             || ( $request eq "goalsAgainstAverage" )
+             || ( $request eq "shutOuts" )
+             || ( $request eq "wins" ) )
+    {
+        my $url = "http://www.nhl.com/ice/m_statslist.htm?view=" . $request;
+
+        my $req = HTTP::Request->new( GET => $url );
+
+        POE::Session->create(
+            inline_states => {
+                _start => sub {
+                    my ( $kernel, $heap ) = @_[ KERNEL, HEAP ];
+                    $kernel->post( 'http_ua' => 'request' => got_response => $req => { channel => $chan, request => $request } );
+                },
+                got_response => sub { nhl_leaderboard_response(@_); }
+            }
+        );
+    } elsif ( $request eq "help" ) {
+        $irc->yield( notice => $nick => "Usage: !nhl <division|conference|stat|help>" );
+        $irc->yield( notice => $nick => "          division   = metropolitan | atlantic | central | pacific ");
+        $irc->yield( notice => $nick => "          conference = east | west" );
+        $irc->yield( notice => $nick => "          stat       = points | goals | assists | +/- | save% | gaa | shutouts | wins" );
+        $irc->yield( notice => $nick => "          help       = display this help message" );
+    } else {
+        $irc->yield( notice => $nick => "Usage: !nhl <division|conference|stat|help>" );
+        return;
+    }
 }
 
 sub delchan {
@@ -2073,7 +2161,7 @@ sub start_timebomb {
         return;
     }
 
-    if (( $tb_target eq $irc->nick_name() )) {
+    if ( $tb_target eq $irc->nick_name() ) {
         $irc->yield( privmsg => $channel => "$nick: Do you think I'm stupid?" );
         start_timebomb( $nick, $channel, $nick, "", $prams[4] );
         return;
@@ -2159,6 +2247,8 @@ sub cut_timebomb {
         $irc->yield( privmsg => $tb_chan => "$nick: You're not holding the timebomb, we can send one your way if you like..." );
         return;
     }
+    if ( $tb_target =~ /^kt/i ) { $tb_ans = $guess; }
+
 
     if ( $guess =~ /$tb_ans/i ) {
         my $rand_bomb = int( rand(20) );
