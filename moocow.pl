@@ -129,6 +129,7 @@ POE::Component::Client::HTTP->spawn(	Alias => 'http_ua',
 my %cmd_hash;
 
 $cmd_hash{"flip"}      = sub { coinflip(@_); };
+$cmd_hash{"joke"}      = sub { random_joke(@_); };
 $cmd_hash{"entertain"} = sub { entertain(@_); };
 $cmd_hash{"quote"}     = sub { quote(@_); };
 $cmd_hash{"addquote"}  = sub { addquote(@_); };
@@ -599,6 +600,21 @@ sub coinflip {
         $result = "Tails!";
     }
     $irc->yield( privmsg => $channel => "$result" );
+}
+
+sub random_joke {
+    my @prams   = @_;
+    my $channel = $prams[1];
+
+    my $rssurl = "http://www.jokesareawesome.com/rss/random/";
+    my $xml = get($rssurl);
+    my $rss = new XML::RSS;
+    $rss->parse($xml);
+    foreach my $item ( @{ $rss->{'items'} } ) {
+        my $title = $item->{'title'};
+        my $content  = $item->{'content'}->{'encoded'};
+        $irc->yield( privmsg => $channel => "$content" );
+    }
 }
 
 sub spell {
@@ -2362,3 +2378,5 @@ sub google {
    my $chan  = $prams[1];
 
 }
+
+
