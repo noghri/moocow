@@ -2263,8 +2263,6 @@ sub cut_timebomb {
         $irc->yield( privmsg => $tb_chan => "$nick: You're not holding the timebomb, we can send one your way if you like..." );
         return;
     }
-    if ( $tb_target =~ /^kt/i ) { $tb_ans = $guess; }
-
 
     if ( $guess =~ /$tb_ans/i ) {
         my $rand_bomb = int( rand(20) );
