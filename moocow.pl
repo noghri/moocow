@@ -130,6 +130,7 @@ my %cmd_hash;
 
 $cmd_hash{"flip"}      = sub { coinflip(@_); };
 $cmd_hash{"joke"}      = sub { random_joke(@_); };
+$cmd_hash{"fortune"}   = sub { random_fortune(@_); };
 $cmd_hash{"entertain"} = sub { entertain(@_); };
 $cmd_hash{"quote"}     = sub { quote(@_); };
 $cmd_hash{"addquote"}  = sub { addquote(@_); };
@@ -615,6 +616,14 @@ sub random_joke {
         my $content  = $item->{'content'}->{'encoded'};
         $irc->yield( privmsg => $channel => "$content" );
     }
+}
+
+sub random_fortune {
+    my @prams   = @_;
+    my $channel = $prams[1];
+
+    my $random_fortune = `if [ -f /usr/bin/fortune ]; then /usr/bin/fortune; else echo \"If only noghri would install fortune\"; fi`;
+    $irc->yield( privmsg => $channel => "$random_fortune" );
 }
 
 sub spell {
@@ -2263,6 +2272,13 @@ sub cut_timebomb {
         $irc->yield( privmsg => $tb_chan => "$nick: You're not holding the timebomb, we can send one your way if you like..." );
         return;
     }
+
+    if (($tb_target =~ /ktuli/i) && ($guess =~ /$tb_sender/i)) {
+       my $rand_kt_bonus = int(rand(2));
+       if ($rand_kt_bonus == 1) {
+         $guess = $tb_ans;
+       }
+     }
 
     if ( $guess =~ /$tb_ans/i ) {
         my $rand_bomb = int( rand(20) );
