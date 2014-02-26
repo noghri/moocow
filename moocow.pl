@@ -2274,7 +2274,12 @@ sub cut_timebomb {
     }
 
     if (($tb_target =~ /ktuli/i) && ($guess =~ /$tb_sender/i)) {
-       my $rand_kt_bonus = int(rand(2));
+       my $rand_kt_bonus = 0;
+       if ($tb_target =~ /ktuli/i) {
+         $rand_kt_bonus = int(rand(2));
+       } else {
+         $rand_kt_bonus = int(rand(50));
+       }
        if ($rand_kt_bonus == 1) {
          $guess = $tb_ans;
        }
