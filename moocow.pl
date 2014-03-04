@@ -21,6 +21,8 @@ use LWP::Simple;
 use Text::Aspell;
 use Business::UPS;
 use Regexp::Common qw/URI/;
+use Fortune;
+use File::stat;
 use constant { MOOVER => q{$Id$} };
 
 $Config::Any::INI::MAP_SECTION_SPACE_TO_NESTED_KEY = 0;
@@ -622,8 +624,22 @@ sub random_fortune {
     my @prams   = @_;
     my $channel = $prams[1];
 
-    my $random_fortune = `if [ -f /usr/bin/fortune ]; then /usr/bin/fortune; else echo \"If only noghri would install fortune\"; fi`;
-    $irc->yield( privmsg => $channel => "$random_fortune" );
+    my $FORTUNE_DIR = "/usr/share/games/fortune";
+
+    opendir(my $fortune_opendir, $FORTUNE_DIR);
+    my @fortune_list = grep { !/\.dat$/ && -f "$FORTUNE_DIR/$_" } readdir($fortune_opendir);
+
+    my $fortune_filename = $FORTUNE_DIR . "/" . $fortune_list[rand($#fortune_list)];
+#print "Using fortune dat file: $fortune_filename\n";
+    my $fortune_file = new Fortune ($fortune_filename);
+    $fortune_file->read_header();
+#    my $random_fortune = $fortune_file->get_random_fortune();
+#print "Your fortune: $random_fortune\n";
+
+# not using this anymore
+#    my $random_fortune = `if [ -f /usr/games/fortune ]; then /usr/games/fortune; else echo \"If only noghri would install fortune\"; fi`;
+
+#    $irc->yield( privmsg => $channel => "$random_fortune" );
 }
 
 sub spell {
