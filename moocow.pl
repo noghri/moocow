@@ -609,15 +609,7 @@ sub random_joke {
     my @prams   = @_;
     my $channel = $prams[1];
 
-    my $rssurl = "http://www.jokesareawesome.com/rss/random/";
-    my $xml = get($rssurl);
-    my $rss = new XML::RSS;
-    $rss->parse($xml);
-    foreach my $item ( @{ $rss->{'items'} } ) {
-        my $title = $item->{'title'};
-        my $content  = $item->{'content'}->{'encoded'};
-        $irc->yield( privmsg => $channel => "$content" );
-    }
+    $irc->yield( privmsg => $channel => "drewski." );
 }
 
 sub random_fortune {
