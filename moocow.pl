@@ -52,6 +52,8 @@ my $dbpath    = readconfig('dbpath');
 my $autourl   = readconfig('autourl');
 my $master    = readconfig('master');
 my $banexpire = readconfig('banexpire');
+my $FORTUNE_DIR = readconfig('fortunedir');
+
 
 # for WORD game
 my $word_on  = 0;     # !word game
@@ -624,7 +626,6 @@ sub random_fortune {
     my @prams   = @_;
     my $channel = $prams[1];
 
-    my $FORTUNE_DIR = readconfig('fortunedir');
 
     opendir(my $fortune_opendir, $FORTUNE_DIR) || return;
     my @fortune_list = grep { !/\.dat$/ && -f "$FORTUNE_DIR/$_" } readdir($fortune_opendir);
