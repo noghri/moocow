@@ -624,22 +624,20 @@ sub random_fortune {
     my @prams   = @_;
     my $channel = $prams[1];
 
-    my $FORTUNE_DIR = "/usr/share/games/fortune";
+    my $FORTUNE_DIR = readconfig('fortunedir');
 
-    opendir(my $fortune_opendir, $FORTUNE_DIR);
+    opendir(my $fortune_opendir, $FORTUNE_DIR) || return;
     my @fortune_list = grep { !/\.dat$/ && -f "$FORTUNE_DIR/$_" } readdir($fortune_opendir);
 
     my $fortune_filename = $FORTUNE_DIR . "/" . $fortune_list[rand($#fortune_list)];
-#print "Using fortune dat file: $fortune_filename\n";
     my $fortune_file = new Fortune ($fortune_filename);
     $fortune_file->read_header();
-#    my $random_fortune = $fortune_file->get_random_fortune();
-#print "Your fortune: $random_fortune\n";
+    my $random_fortune = $fortune_file->get_random_fortune();
 
-# not using this anymore
-#    my $random_fortune = `if [ -f /usr/games/fortune ]; then /usr/games/fortune; else echo \"If only noghri would install fortune\"; fi`;
-
-#    $irc->yield( privmsg => $channel => "$random_fortune" );
+    my @fortune_lines = split(/\n/, $random_fortune);
+    foreach my $line (@fortune_lines) {
+      $irc->yield( privmsg => $channel => "$line" );
+    }
 }
 
 sub spell {
