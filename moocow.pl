@@ -2258,7 +2258,12 @@ sub timebomb_expire {
     if ( !$tb_on ) { return; }
 
     $irc->yield( privmsg => $tb_chan => "$tb_target: Time's up!" );
-    $irc->yield( kick => $tb_chan => "$tb_target" => "Time's up!  KABOOOOOM!" );
+    my $wheres_the_kaboom = int(rand(25));
+    if ($wheres_the_kaboom == 0) {
+      $irc->yield( privmsg => $tb_chan => "$tb_target: Where's the kaboom?  There was supposed to be an earth-shattering kaboom!");
+    } else {
+      $irc->yield( kick => $tb_chan => "$tb_target" => "Time's up!  KABOOOOOM!" );
+    }
 
     $tb_on     = 0;
     $tb_ans    = "";
@@ -2320,7 +2325,13 @@ sub cut_timebomb {
     }
     else {
         $irc->yield( privmsg => $tb_chan => "$nick: You chose poorly..." );
-        $irc->yield( kick => $tb_chan => "$tb_target" => "You should have chose $tb_ans!  KABOOOOOM!" );
+
+        my $wheres_the_kaboom = int(rand(25));
+        if ($wheres_the_kaboom == 0) {
+          $irc->yield( privmsg => $tb_chan => "$tb_target: Where's the kaboom?  There was supposed to be an earth-shattering kaboom!");
+        } else {
+          $irc->yield( kick => $tb_chan => "$tb_target" => "You should have chose $tb_ans!  KABOOOOOM!" );
+        }
     }
     $tb_target = "";
     $tb_sender = "";
