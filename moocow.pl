@@ -566,6 +566,11 @@ sub weather_extended {
     my $cond    = $wun->conditions;
     my $updated = $cond->observation_time;
     $updated =~ s/Last Updated on //;
+    if(!defined($cond->display_location))
+    {
+        $irc->yield( privmsg => $chan => "Invalid location");
+        return;
+    }
     my $location = $cond->display_location->city;
     my $weather  = $cond->weather;
     my $temp     = $cond->temperature_string;
