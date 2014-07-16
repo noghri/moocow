@@ -546,13 +546,18 @@ sub weather_extended {
         return;
     }
 
-    my $wun = new WWW::Wunderground::API(
+    my $wun; 
+    eval {
+    $wun = new WWW::Wunderground::API(
         location => $zip,
         api_key  => $apikey,
         auto_api => 1,
-        cache    => Cache::FileCache->new( { namespace => 'moocow_wundercache', default_expires_in => 2400 } )
-    );
-
+        cache    => Cache::FileCache->new( { namespace => 'moocow_wundercache', default_expires_in => 2400 } ));
+    };
+    if(!defined($wun)) {
+        $irc->yield( privmsg => $chan => "No results: wunderground api failed");
+        return;
+    }
     if ( $wun->response->error->description ) {
         $irc->yield( privmsg => $chan => "No results: " . $wun->response->error->description );
         return;
