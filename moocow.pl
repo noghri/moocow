@@ -555,7 +555,7 @@ sub weather_extended {
         location => $zip,
         api_key  => $apikey,
         auto_api => 1,
-        cache    => Cache::FileCache->new( { cache_root => $cache_tempdir, namespace => 'moocow_wundercache', default_expires_in => 2400, directory_umask => '077'  } ));
+        cache    => Cache::FileCache->new( { cache_root => $cache_tempdir, namespace => 'moocow_wundercache', default_expires_in => 2400, directory_umask => 0077  } ));
     };
     if(!defined($wun)) {
         $irc->yield( privmsg => $chan => "No results: wunderground api failed");
