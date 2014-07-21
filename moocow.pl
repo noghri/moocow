@@ -9,6 +9,7 @@ use DBI;
 use POSIX;
 use Config::Any;
 use Config::Any::INI;
+use File::Temp qw(tempdir);
 use Cache::FileCache;
 use WWW::Wunderground::API;
 use Data::Dumper;
@@ -39,6 +40,8 @@ getopts( 'h:f:', \%opts );
 if ( exists( $opts{f} ) ) {
     $confpath = $opts{f};
 }
+
+my $cache_tempdir = tempdir( "moocow-cache-XXXXXX", TMPDIR => 1, CLEANUP => 1);
 
 parseconfig($confpath);
 
@@ -552,7 +555,7 @@ sub weather_extended {
         location => $zip,
         api_key  => $apikey,
         auto_api => 1,
-        cache    => Cache::FileCache->new( { namespace => 'moocow_wundercache', default_expires_in => 2400 } ));
+        cache    => Cache::FileCache->new( { cache_root => $cache_tempdir, namespace => 'moocow_wundercache', default_expires_in => 2400, directory_umask => '077'  } ));
     };
     if(!defined($wun)) {
         $irc->yield( privmsg => $chan => "No results: wunderground api failed");
