@@ -609,7 +609,7 @@ sub weather_extended {
 
     if( $alertname ) {
 
-       $irc->yield( privmsg => $chan => "WEATHER ALERT: $alertname" );
+       $irc->yield( privmsg => $chan => "WEATHER ALERT: \x02$alertname\x02" );
   
     }
 
