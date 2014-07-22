@@ -571,6 +571,7 @@ sub weather_extended {
         return;
     }
 
+    my $alerts  = $wun->api_call('alerts');
     my $cond    = $wun->conditions;
     my $updated = $cond->observation_time;
     $updated =~ s/Last Updated on //;
@@ -596,11 +597,21 @@ sub weather_extended {
     my $precip   = $cond->precip_today_string;
     my $forecast = $wun->forecast->txt_forecast->forecastday->[0]{fcttext};
 
+
+
     #Harpers Ferry, WV; Updated: 3:00 PM EDT on October 17, 2013; Conditions: Overcast; Temperature: 71.2°F (21.8°C); UV: 1/16 Humidity: 75%; Pressure: 29.79 in/2054 hPa (Falling); Wind: SSE at 5.0 MPH (8 KPH)
     $irc->yield( privmsg => $chan =>
 "WX $location Elevation: \x02$elevation\x02 Updated: \x02$updated\x02 Conditions: \x02$weather\x02: Temp: \x02$temp\x02 Feels like: \x02$feels\x02 Dewpoint: \x02$dew\x02 UV: \x02$uv\x02 Humidity: \x02$humid:\x02 Pressure: \x02${pressin}/in/${pressmb}\x02 MB Wind: \x02$wind\x02 Precip:\x02 $precip\x02"
     );
     $irc->yield( privmsg => $chan => "$forecast" );
+
+    my $alertname = $alerts->[0]->{"description"};
+
+    if( $alertname ) {
+
+       $irc->yield( privmsg => $chan => "WEATHER ALERT: $alertname" );
+  
+    }
 
     #    my $resp = $wun->r->full_location . "Updated: $obs"
     return;
