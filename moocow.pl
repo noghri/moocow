@@ -155,8 +155,8 @@ $cmd_hash{"spell"}     = sub { spell(@_); };
 $cmd_hash{"start"}     = sub { start_trivia(@_); };
 $cmd_hash{"stop"}      = sub { stop_trivia(@_); };
 $cmd_hash{"tscore"}    = sub { trivia_score(@_); };
-$cmd_hash{"tb"}        = sub { start_timebomb(@_); };
-$cmd_hash{"cut"}       = sub { cut_timebomb(@_); };
+$cmd_hash{"buttfuck"}  = sub { start_timebomb(@_); };
+$cmd_hash{"condom"}    = sub { cut_timebomb(@_); };
 $cmd_hash{"track"}     = sub { track_package(@_); };
 $cmd_hash{"tr"}        = sub { track_package(@_); };
 $cmd_hash{"google"}    = sub { google(@_); };
@@ -2209,12 +2209,14 @@ sub score_trivia {
     }
 }
 
+
+
 sub start_timebomb {
     my @prams   = @_;
     my $channel = $prams[1];
 
     if ($tb_on) {
-        $irc->yield( privmsg => $channel => "The timebomb is already running... " );
+        $irc->yield( privmsg => $channel => "I am already buttfucking some other motherfucker!" );
         return;
     }
 
@@ -2223,13 +2225,13 @@ sub start_timebomb {
     my $kernel = $prams[4];
 
     if ( ! $irc->is_channel_member($channel,$tb_target) ) {
-        $irc->yield( privmsg => $channel => "$nick: $tb_target is not in the channel, you must want the timebomb..." );
+        $irc->yield( privmsg => $channel => "$nick: $tb_target is not in the channel, you must want the buttfuck..." );
         start_timebomb( $nick, $channel, $nick, "", $prams[4] );
         return;
     }
 
     if ( $tb_target eq $irc->nick_name() ) {
-        $irc->yield( privmsg => $channel => "$nick: Do you think I'm stupid?" );
+        $irc->yield( privmsg => $channel => "$nick: How the fuck do you expect me to fuck myself?" );
         start_timebomb( $nick, $channel, $nick, "", $prams[4] );
         return;
     }
@@ -2240,9 +2242,8 @@ sub start_timebomb {
     $tb_sender  = $nick;
 
     my @tb_colors = (
-        'Red',     'Orange', 'Yellow',     'Green',      'Blue',   'Violet',  'Indigo',  'Black', 'White', 'Grey',  'Brown',    'Pink',
-        'Mauve',   'Beige',  'Aquamarine', 'Chartreuse', 'Bisque', 'Crimson', 'Fuchsia', 'Gold',  'Ivory', 'Khaki', 'Lavender', 'Lime',
-        'Magenta', 'Maroon', 'Navy',       'Olive',      'Plum',   'Silver',  'Tan',     'Teal',  'Turquoise'
+        'Trojan',  'Magnum', 'Lifestyles', 'Durex', 'Natural Lamb', 'Okamoto', 'Pleasure Plus', 'Trustex', 'Beyond Seven', 'Caution Wear', 'Rough Rider', 'Hefty bag', 'latex glove',
+        'Crown', 'Contempo', 'Kirkwood', 'Vending Machine', 'Ziplock'
     );
 
     my $tb_num_choices = int(rand(7));
@@ -2272,8 +2273,8 @@ sub start_timebomb {
         if ( defined $tb_color_reversed{'Pink'} ) { $tb_ans = "Pink"; }
     }
 
-    $irc->yield( privmsg => $channel => "$tb_target: Timebomb! You have $tb_timeout seconds!" );
-    $irc->yield( privmsg => $channel => "$tb_target: Choose which wire to !cut: $tb_color_string" );
+    $irc->yield( privmsg => $channel => "$tb_target: Ohh yeah I'm gonna buttfuck you good!  Now you gonna get aids if this condom rips! You got $tb_timeout seconds, princess!" );
+    $irc->yield( privmsg => $channel => "$tb_target: Choose a condom fucker %condom: $tb_color_string" );
 
     $kernel->delay( 'timebomb_expire', $tb_timeout );
 
@@ -2287,9 +2288,9 @@ sub timebomb_expire {
     $irc->yield( privmsg => $tb_chan => "$tb_target: Time's up!" );
     my $wheres_the_kaboom = int(rand(25));
     if ($wheres_the_kaboom == 0) {
-      $irc->yield( privmsg => $tb_chan => "$tb_target: Where's the kaboom?  There was supposed to be an earth-shattering kaboom!");
+      $irc->yield( privmsg => $tb_chan => "$tb_target: Where's the orgasm?  I was supposed to orgasm fuckers!");
     } else {
-      $irc->yield( kick => $tb_chan => "$tb_target" => "Time's up!  KABOOOOOM!" );
+      $irc->yield( kick => $tb_chan => "$tb_target" => "Oh fuck yeah...SPOOOGE!" );
     }
 
     $tb_on     = 0;
@@ -2306,17 +2307,18 @@ sub cut_timebomb {
     my $channel = $prams[1];
     my $nick    = $prams[2];
 
+
     if ( !$tb_on ) {
         my $rand_bomb = int( rand(10) );
         if ( $rand_bomb > 7 ) {
-            $irc->yield( privmsg => $channel => "$nick: You should know better than to go cutting wires you don't know what they go to... you've activated a timebomb!" );
+            $irc->yield( privmsg => $channel => "$nick: You should know better than to go poking at random anuses! You gonna get RAPED!" );
             start_timebomb( $nick, $channel, $nick, "", $prams[4] );
         }
         return;
     }
 
     if ( $nick !~ /$tb_target/i ) {
-        $irc->yield( privmsg => $tb_chan => "$nick: You're not holding the timebomb, we can send one your way if you like..." );
+        $irc->yield( privmsg => $tb_chan => "$nick: You wanna get fucked too?" );
         return;
     }
 
@@ -2335,19 +2337,19 @@ sub cut_timebomb {
     if ( $guess =~ /$tb_ans/i ) {
         my $rand_bomb = int( rand(20) );
         if ( $rand_bomb == 18 ) {
-            $irc->yield( privmsg => $channel => "$nick: You have disarmed the first timer, but have activated another!" );
+            $irc->yield( privmsg => $channel => "$nick: Well you got me off once, but I want another go motherfucker!" );
             $tb_on = 0;
             start_timebomb( $nick, $channel, $tb_sender, "", $prams[4] );
             return;
         }
         elsif ( $rand_bomb == 19 ) {
-            $irc->yield( privmsg => $channel => "$tb_sender: Bad news for you!  $nick disarmed the bomb but now you have one to disarm!" );
+            $irc->yield( privmsg => $channel => "$tb_sender: Bad news for you!  $tb_sender I'm going to fuck you now!" );
             $tb_on = 0;
             start_timebomb( $tb_sender, $channel, $tb_target, "", $prams[4] );
             return;
         }
         else {
-            $irc->yield( privmsg => $tb_chan => "$nick: You chose wisely.  Have a nice day!" );
+            $irc->yield( privmsg => $tb_chan => "$nick: Hmm..this condom still is holding up...SPLOOGE!!! I feel better. I guess you don't have aids now?" );
         }
     }
     else {
@@ -2355,9 +2357,9 @@ sub cut_timebomb {
 
         my $wheres_the_kaboom = int(rand(25));
         if ($wheres_the_kaboom == 0) {
-          $irc->yield( privmsg => $tb_chan => "$tb_target: Where's the kaboom?  There was supposed to be an earth-shattering kaboom!");
+          $irc->yield( privmsg => $tb_chan => "$tb_target: Where's the orgasm? I want an orgasm!");
         } else {
-          $irc->yield( kick => $tb_chan => "$tb_target" => "You should have chose $tb_ans!  KABOOOOOM!" );
+          $irc->yield( kick => $tb_chan => "$tb_target" => "You should have chose $tb_ans! SPLOOGE!!!" );
         }
     }
     $tb_target = "";
