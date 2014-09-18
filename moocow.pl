@@ -124,7 +124,7 @@ my $irc = POE::Component::IRC::State->spawn(
     Port    => $port,
     UseSSL  => $usessl,
     Debug   => 1,
-    Flood   => 0,
+    Flood   => 1,
 ) or die "Oh noooo! $!";
 
 POE::Component::Client::HTTP->spawn(	Alias => 'http_ua', 
