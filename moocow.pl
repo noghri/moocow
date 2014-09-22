@@ -719,12 +719,21 @@ sub entertain {
     my @prams   = @_;
     my $channel = $prams[1];
 
-    if ( !$irc->is_channel_member( $channel, "KtuLi" ) ) {
-        $irc->yield( ctcp => $channel => "ACTION sends a zombie to track down KtuLi and punch him in the throat" );
-    }
-    else {
-        $irc->yield( ctcp => $channel => "ACTION punches KtuLi in the throat." );
-    }
+   my @chan_members = $irc->channel_list($channel);
+   my @preaction = ('', 'sends a zombie that ', 'hires a stripper that ', 'organizes a flashmob which');
+   my @action = ('punches', 'kicks', 'headbutts', 'karate chops', 'shoots', 'stabs');
+   my @target = ('face', 'nuts', 'arse', 'noodle', 'sensitive bits', 'gut', 'knee', 'head', 'ear', 'mouth', 'nose', 'kidneys', 'shin');
+
+   my $string = $preaction[ rand($#preaction) ] . $action[ rand($#action) ] . " " . $chan_members[ rand($#chan_members) ] . " in the " . $target[ rand($#target) ] . ".";
+
+   $irc->yield( ctcp => $channel => "ACTION $string" );
+
+#    if ( !$irc->is_channel_member( $channel, "KtuLi" ) ) {
+#        $irc->yield( ctcp => $channel => "ACTION sends a zombie to track down KtuLi and punch him in the throat" );
+#    }
+#    else {
+#        $irc->yield( ctcp => $channel => "ACTION punches KtuLi in the throat." );
+#    }
 }
 
 sub moo {
