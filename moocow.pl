@@ -720,7 +720,7 @@ sub entertain {
     my $channel = $prams[1];
 
    my @chan_members = $irc->channel_list($channel);
-   my @preaction = ('', 'sends a zombie that ', 'hires a stripper that ', 'organizes a flashmob which', 'writes his congressman requesting that they vote for a law that rewards anyone that ', 'builds a robot that ', 'trains a miniature schnauzer which then ', 'calls Chuck Norris who promptly appears and ');
+   my @preaction = ('', 'sends a zombie that ', 'hires a stripper that ', 'organizes a flashmob which ', 'writes his congressman requesting that they vote for a law that rewards anyone that ', 'builds a robot that ', 'trains a miniature schnauzer which then ', 'calls Chuck Norris who promptly appears and ');
    my @action = ('punches', 'kicks', 'headbutts', 'karate chops', 'shoots', 'stabs', 'bites', 'roundhouse kicks', 'sucker punches', 'uppercuts', 'flogs', 'whips', 'tazers', 'pepper sprays', 'Vulcan neck pinches');
    my @target = ('face', 'nuts', 'arse', 'noodle', 'sensitive bits', 'gut', 'knee', 'head', 'ear', 'mouth', 'nose', 'kidneys', 'shin', 'wazoo', 'junk', 'vagina', 'neck', 'throat');
 
