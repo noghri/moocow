@@ -160,6 +160,7 @@ $cmd_hash{"cut"}       = sub { cut_timebomb(@_); };
 $cmd_hash{"track"}     = sub { track_package(@_); };
 $cmd_hash{"tr"}        = sub { track_package(@_); };
 $cmd_hash{"google"}    = sub { google(@_); };
+$cmd_hash{"norris"}    = sub { norris_joke(@_); };
 
 my %pmsg_cmd_hash;
 
@@ -649,6 +650,18 @@ sub random_joke {
         my $content  = $item->{'content'}->{'encoded'};
         $irc->yield( privmsg => $channel => "$content" );
     }
+}
+
+sub norris_joke {
+    my @prams   = @_;
+    my $channel = $prams[1];
+    
+    my $j = JSON::Any->new;
+    my $URL = 'http://api.icndb.com/jokes/random';
+    my $content = get($URL);
+    my $result = $j->decode($content);
+    my $joke = $result->{"value"}{"joke"};
+    $irc->yield( privmsg => $channel => "$joke" );
 }
 
 sub random_fortune {
