@@ -56,6 +56,7 @@ my $autourl   = readconfig('autourl');
 my $master    = readconfig('master');
 my $banexpire = readconfig('banexpire');
 my $FORTUNE_DIR = readconfig('fortunedir');
+my $googlekey  = readconfig('googlekey');
 
 
 # for WORD game
@@ -836,7 +837,7 @@ sub gogl {
     return if ( defined( $last_gogl{$channel} ) && $last_gogl{$channel} > ( time() - 30 ) );
     $last_gogl{$channel} = time();
 
-    my $goglurl = "https://www.googleapis.com/urlshortener/v1/url";
+    my $goglurl = "https://www.googleapis.com/urlshortener/v1/url?key=$googlekey";
 
     my $req = HTTP::Request->new( POST => $goglurl );
     $req->content_type('application/json');
