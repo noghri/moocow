@@ -610,9 +610,6 @@ sub weather_extended {
 
     my $alertname = $alerts->[0]->{"description"};
 
-    if( $alertname ) {
-
-
     if(scalar @{ $wun->alerts } > 0)
     {
         my $alertname = $wun->alerts->[0]->{"description"};
