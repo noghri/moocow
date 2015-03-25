@@ -2,6 +2,9 @@
 
 use strict;
 use warnings;
+use utf8;
+use Encode;
+
 use POE qw(Component::IRC Component::IRC::State Component::IRC::Plugin::AutoJoin Component::IRC::Plugin::Connector Component::IRC::Plugin::NickReclaim Component::IRC::Plugin::CTCP Component::Client::HTTP);
 use Getopt::Std;
 use JSON::Any;
