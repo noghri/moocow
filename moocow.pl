@@ -2393,6 +2393,75 @@ sub cut_timebomb {
     $tb_on     = 0;
 }
 
+sub timebomb_stats_get_field {
+    my @prams    = @_;
+    my $nick     = $prams[0];
+    my $field    = $prams[1];
+
+    my $query = q{SELECT nick,? from tbscores where nick = ?};
+    my $sth   = $dbh->prepare($query);
+    $sth->bind_param( 1, $field );
+    $sth->bind_param( 2, $nick );
+    my $rv = $sth->execute();
+    if ( !$rv ) {
+        $irc->yield( privmsg => $nick => "Unable to get timebomb $field: " . $sth->errstr );
+    } else {
+        my $res = $sth->fetchrow_hashref;
+        if ( $sth->rows > 0 ) {
+            my $return_value = $res->{'$field'};
+            return($return_value);
+        } else {
+            return(0);
+        }
+    }
+}
+
+sub timebomb_stats_set_field {
+    my @prams    = @_;
+    my $nick     = $prams[0];
+    my $field    = $prams[1];
+    my $newvalue = $prams[2];
+
+    my $query = q{SELECT nick,? from tbscores where nick = ?};
+    my $sth   = $dbh->prepare($query);
+    $sth->bind_param( 1, $field );
+    $sth->bind_param( 2, $nick );
+    my $rv = $sth->execute();
+    if ( !$rv ) {
+        $irc->yield( privmsg => $nick => "Unable to get timebomb $field: " . $sth->errstr );
+    }
+    else {
+        my $res = $sth->fetchrow_hashref;
+        if ( $sth->rows > 0 ) {
+            $query = q{UPDATE tbscores set ? = ? where nick = ?};
+            $sth   = $dbh->prepare($query);
+            $sth->bind_param( 1, $field );
+            $sth->bind_param( 2, $newvalue );
+            $sth->bind_param( 3, $nick );
+            my $rv2 = $sth->execute();
+            if ( !$rv2 ) {
+                $irc->yield( privmsg => $nick => "Unable to set timebomb $field: " . $sth->errstr );
+            }
+        } else {
+            timebomb_stats_init_user($nick);
+            timebomb_stats_set_field($nick, $field, $newvalue);
+        }
+    }
+}
+
+sub timebomb_stats_init_user {
+    my @prams    = @_;
+    my $nick     = $prams[0];
+
+    my $query = q{INSERT INTO tbscores (nick, wins, cheats, losses, timeouts, duds, doubles) values (?, 0, 0, 0, 0, 0, 0)};
+    $sth   = $dbh->prepare($query);
+    $sth->bind_param( 1, $nick );
+    my $rv3 = $sth->execute();
+    if ( !$rv3 ) {
+        $irc->yield( privmsg => $nick => "Unable to init timebomb user $nick: " . $sth->errstr );
+    }
+}
+
 sub track_package {
     my @prams = @_;
     my $trnum = $prams[0];
