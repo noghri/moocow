@@ -2490,7 +2490,7 @@ sub timebomb_stats_init_user {
     my @prams    = @_;
     my $nick     = $prams[0];
 
-    my $query = q{INSERT INTO tbscores (nick, wins, cheats, losses, timeouts, duds, doubles) values (?, 0, 0, 0, 0, 0, 0)};
+    my $query = q{INSERT INTO tbscores (nick, wins, cheats, losses, timeouts, duds, doubles, backfires) values (?, 0, 0, 0, 0, 0, 0, 0)};
     $sth   = $dbh->prepare($query);
     $sth->bind_param( 1, $nick );
     my $rv3 = $sth->execute();
