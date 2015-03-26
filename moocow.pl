@@ -2,6 +2,9 @@
 
 use strict;
 use warnings;
+use utf8;
+use Encode;
+
 use POE qw(Component::IRC Component::IRC::State Component::IRC::Plugin::AutoJoin Component::IRC::Plugin::Connector Component::IRC::Plugin::NickReclaim Component::IRC::Plugin::CTCP Component::Client::HTTP);
 use Getopt::Std;
 use JSON::Any;
@@ -56,6 +59,7 @@ my $autourl   = readconfig('autourl');
 my $master    = readconfig('master');
 my $banexpire = readconfig('banexpire');
 my $FORTUNE_DIR = readconfig('fortunedir');
+my $googlekey  = readconfig('googlekey');
 
 
 # for WORD game
@@ -602,7 +606,6 @@ sub weather_extended {
 
 
 
-    #Harpers Ferry, WV; Updated: 3:00 PM EDT on October 17, 2013; Conditions: Overcast; Temperature: 71.2°F (21.8°C); UV: 1/16 Humidity: 75%; Pressure: 29.79 in/2054 hPa (Falling); Wind: SSE at 5.0 MPH (8 KPH)
     $irc->yield( privmsg => $chan =>
 "WX $location Elevation: \x02$elevation\x02 Updated: \x02$updated\x02 Conditions: \x02$weather\x02: Temp: \x02$temp\x02 Feels like: \x02$feels\x02 Dewpoint: \x02$dew\x02 UV: \x02$uv\x02 Humidity: \x02$humid:\x02 Pressure: \x02${pressin}/in/${pressmb}\x02 MB Wind: \x02$wind\x02 Precip:\x02 $precip\x02"
     );
@@ -610,13 +613,21 @@ sub weather_extended {
 
     my $alertname = $alerts->[0]->{"description"};
 
-    if( $alertname ) {
+    if(scalar @{ $wun->alerts } > 0)
+    {
+        my $alertname = $wun->alerts->[0]->{"description"};
+        my $desc = decode_utf8($wun->alerts->[0]->{"message"});
 
-       $irc->yield( privmsg => $chan => "WEATHER ALERT: \x02$alertname\x02" );
-  
+        if( $alertname && $desc ) 
+        {
+           if(length($desc) <= 0) 
+           {
+               $desc = "- $desc";
+           }
+           $irc->yield( privmsg => $chan => "WEATHER ALERT: \x02$alertname\x02 $desc" );
+        }
     }
 
-    #    my $resp = $wun->r->full_location . "Updated: $obs"
     return;
 
 }
@@ -826,7 +837,7 @@ sub gogl {
     return if ( defined( $last_gogl{$channel} ) && $last_gogl{$channel} > ( time() - 30 ) );
     $last_gogl{$channel} = time();
 
-    my $goglurl = "https://www.googleapis.com/urlshortener/v1/url";
+    my $goglurl = "https://www.googleapis.com/urlshortener/v1/url?key=$googlekey";
 
     my $req = HTTP::Request->new( POST => $goglurl );
     $req->content_type('application/json');
