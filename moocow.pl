@@ -160,6 +160,7 @@ $cmd_hash{"start"}     = sub { start_trivia(@_); };
 $cmd_hash{"stop"}      = sub { stop_trivia(@_); };
 $cmd_hash{"tscore"}    = sub { trivia_score(@_); };
 $cmd_hash{"tb"}        = sub { start_timebomb(@_); };
+$cmd_hash{"tbscore"}   = sub { timebomb_stats_print(@_); };
 $cmd_hash{"cut"}       = sub { cut_timebomb(@_); };
 $cmd_hash{"track"}     = sub { track_package(@_); };
 $cmd_hash{"tr"}        = sub { track_package(@_); };
@@ -2325,8 +2326,16 @@ sub timebomb_expire {
     my $wheres_the_kaboom = int(rand(25));
     if ($wheres_the_kaboom == 0) {
       $irc->yield( privmsg => $tb_chan => "$tb_target: Where's the kaboom?  There was supposed to be an earth-shattering kaboom!");
+      my $tb_field = "duds";
+      my $tb_value = timebomb_stats_get_field($tb_target, $tb_field);
+      $tb_value++;
+      timebomb_stats_set_field($tb_target, $tb_field, $tb_value);
     } else {
       $irc->yield( kick => $tb_chan => "$tb_target" => "Time's up!  KABOOOOOM!" );
+      my $tb_field = "timeouts";
+      my $tb_value = timebomb_stats_get_field($tb_target, $tb_field);
+      $tb_value++;
+      timebomb_stats_set_field($tb_target, $tb_field, $tb_value);
     }
 
     $tb_on     = 0;
@@ -2348,6 +2357,10 @@ sub cut_timebomb {
         my $rand_bomb = int( rand(10) );
         if ( $rand_bomb > 7 ) {
             $irc->yield( privmsg => $channel => "$nick: You should know better than to go cutting wires you don't know what they go to... you've activated a timebomb!" );
+            my $tb_field = "backfires";
+            my $tb_value = timebomb_stats_get_field($tb_sender, $tb_field);
+            $tb_value++;
+            timebomb_stats_set_field($tb_sender, $tb_field, $tb_value);
             start_timebomb( $nick, $channel, $nick, "", $prams[4] );
         }
         return;
@@ -2375,17 +2388,29 @@ sub cut_timebomb {
         if ( $rand_bomb == 18 ) {
             $irc->yield( privmsg => $channel => "$nick: You have disarmed the first timer, but have activated another!" );
             $tb_on = 0;
+            my $tb_field = "doubles";
+            my $tb_value = timebomb_stats_get_field($nick, $tb_field);
+            $tb_value++;
+            timebomb_stats_set_field($nick, $tb_field, $tb_value);
             start_timebomb( $nick, $channel, $tb_sender, "", $prams[4] );
             return;
         }
         elsif ( $rand_bomb == 19 ) {
             $irc->yield( privmsg => $channel => "$tb_sender: Bad news for you!  $nick disarmed the bomb but now you have one to disarm!" );
             $tb_on = 0;
+            my $tb_field = "backfires";
+            my $tb_value = timebomb_stats_get_field($tb_sender, $tb_field);
+            $tb_value++;
+            timebomb_stats_set_field($tb_sender, $tb_field, $tb_value);
             start_timebomb( $tb_sender, $channel, $tb_target, "", $prams[4] );
             return;
         }
         else {
             $irc->yield( privmsg => $tb_chan => "$nick: You chose wisely.  Have a nice day!" );
+            my $tb_field = "wins";
+            my $tb_value = timebomb_stats_get_field($nick, $tb_field);
+            $tb_value++;
+            timebomb_stats_set_field($nick, $tb_field, $tb_value);
         }
     }
     else {
@@ -2394,8 +2419,16 @@ sub cut_timebomb {
         my $wheres_the_kaboom = int(rand(25));
         if ($wheres_the_kaboom == 0) {
           $irc->yield( privmsg => $tb_chan => "$tb_target: Where's the kaboom?  There was supposed to be an earth-shattering kaboom!");
+          my $tb_field = "duds";
+          my $tb_value = timebomb_stats_get_field($nick, $tb_field);
+          $tb_value++;
+          timebomb_stats_set_field($nick, $tb_field, $tb_value);
         } else {
           $irc->yield( kick => $tb_chan => "$tb_target" => "You should have chose $tb_ans! KABOOOOOM!!!" );
+          my $tb_field = "losses";
+          my $tb_value = timebomb_stats_get_field($nick, $tb_field);
+          $tb_value++;
+          timebomb_stats_set_field($nick, $tb_field, $tb_value);
         }
     }
     $tb_target = "";
@@ -2409,17 +2442,15 @@ sub timebomb_stats_get_field {
     my $nick     = $prams[0];
     my $field    = $prams[1];
 
-    my $query = q{SELECT nick,? from tbscores where nick = ?};
-    my $sth   = $dbh->prepare($query);
-    $sth->bind_param( 1, $field );
-    $sth->bind_param( 2, $nick );
+    my $sth   = $dbh->prepare("SELECT nick,$field from tbscores where nick = ?;");
+    $sth->bind_param(1, $nick);
     my $rv = $sth->execute();
     if ( !$rv ) {
         $irc->yield( privmsg => $nick => "Unable to get timebomb $field: " . $sth->errstr );
     } else {
         my $res = $sth->fetchrow_hashref;
         if ( $sth->rows > 0 ) {
-            my $return_value = $res->{'$field'};
+            my $return_value = $res->{$field};
             return($return_value);
         } else {
             return(0);
@@ -2433,10 +2464,8 @@ sub timebomb_stats_set_field {
     my $field    = $prams[1];
     my $newvalue = $prams[2];
 
-    my $query = q{SELECT nick,? from tbscores where nick = ?};
-    my $sth   = $dbh->prepare($query);
-    $sth->bind_param( 1, $field );
-    $sth->bind_param( 2, $nick );
+    my $sth = $dbh->prepare("SELECT nick,'$field' from tbscores where nick = ?;");
+    $sth->bind_param(1, $nick);
     my $rv = $sth->execute();
     if ( !$rv ) {
         $irc->yield( privmsg => $nick => "Unable to get timebomb $field: " . $sth->errstr );
@@ -2444,11 +2473,8 @@ sub timebomb_stats_set_field {
     else {
         my $res = $sth->fetchrow_hashref;
         if ( $sth->rows > 0 ) {
-            $query = q{UPDATE tbscores set ? = ? where nick = ?};
-            $sth   = $dbh->prepare($query);
-            $sth->bind_param( 1, $field );
-            $sth->bind_param( 2, $newvalue );
-            $sth->bind_param( 3, $nick );
+            $sth = $dbh->prepare("UPDATE tbscores set '$field' = '$newvalue' where nick = ?;");
+            $sth->bind_param(1, $nick);
             my $rv2 = $sth->execute();
             if ( !$rv2 ) {
                 $irc->yield( privmsg => $nick => "Unable to set timebomb $field: " . $sth->errstr );
@@ -2472,6 +2498,47 @@ sub timebomb_stats_init_user {
         $irc->yield( privmsg => $nick => "Unable to init timebomb user $nick: " . $sth->errstr );
     }
 }
+
+sub timebomb_stats_print {
+    my @prams   = @_;
+    my $request = lc($prams[0]);
+    my $channel = $prams[1];
+    my $nick    = $prams[2];
+
+    if ($request =~ /wins|cheats|losses|timeouts|duds|doubles|backfires/i) {
+        my $sth      = $dbh->prepare("SELECT count(*) from tbscores;");
+        my $rv1      = $sth->execute();
+        my $res      = $sth->fetchrow_hashref;
+        my $rowcount = $res->{'count(*)'};
+
+        $sth   = $dbh->prepare("SELECT nick,$request from tbscores ORDER BY CAST ($request AS INTEGER) DESC LIMIT 10;");
+        my $rv = $sth->execute();
+
+        if ( !$rv ) {
+            $irc->yield( privmsg => $nick => "Unable to get scores: " . $sth->errstr );
+        }
+        $res = $sth->fetchrow_hashref;
+
+        if ( $rowcount > 10 ) { $rowcount = 10; }
+        my $output = "";
+        for ( my $i = 1 ; $i < $rowcount + 1 ; $i++ ) {
+            $output = $output . " $i. $res->{'nick'}($res->{$request})";
+            $res    = $sth->fetchrow_hashref;
+        }
+    
+        $irc->yield( privmsg => $channel => "Top 10 scores for timebomb $request:" );
+        $irc->yield( privmsg => $channel => $output );
+    } elsif ($request eq "help") {
+print "Printing the tbscore help info\n";
+    } else {
+        if ($request eq "") {
+print "Working on your own scores\n";
+        } else {
+print "Working on specific nick or nothing\n";
+        }
+    }
+}
+
 
 sub track_package {
     my @prams = @_;
