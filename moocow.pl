@@ -2523,7 +2523,7 @@ sub timebomb_stats_init_user {
 
 sub timebomb_stats_print {
     my @prams   = @_;
-    my $request = lc($prams[0]);
+    my $request = $prams[0];
     my $channel = $prams[1];
     my $nick    = $prams[2];
 
