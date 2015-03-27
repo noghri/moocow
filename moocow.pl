@@ -2464,9 +2464,10 @@ sub timebomb_stats_get_field {
     my @prams    = @_;
     my $nick     = $prams[0];
     my $field    = $prams[1];
+    my $lc_nick  = lc_irc($nick);
 
-    my $sth   = $dbh->prepare("SELECT nick,$field from tbscores where nick = ?;");
-    $sth->bind_param(1, $nick);
+    my $sth   = $dbh->prepare("SELECT nick,$field from tbscores where lc_nick = ?;");
+    $sth->bind_param(1, $lc_nick);
     my $rv = $sth->execute();
     if ( !$rv ) {
         $irc->yield( privmsg => $nick => "Unable to get timebomb $field: " . $sth->errstr );
@@ -2486,17 +2487,18 @@ sub timebomb_stats_set_field {
     my $nick     = $prams[0];
     my $field    = $prams[1];
     my $newvalue = $prams[2];
+    my $lc_nick  = lc_irc($nick);
 
-    my $sth = $dbh->prepare("SELECT nick,'$field' from tbscores where nick = ?;");
-    $sth->bind_param(1, $nick);
+    my $sth = $dbh->prepare("SELECT nick,'$field' from tbscores where lc_nick = ?;");
+    $sth->bind_param(1, $lc_nick);
     my $rv = $sth->execute();
     if ( !$rv ) {
         $irc->yield( privmsg => $nick => "Unable to get timebomb $field: " . $sth->errstr );
     } else {
         my $res = $sth->fetchrow_hashref;
         if ( $sth->rows > 0 ) {
-            $sth = $dbh->prepare("UPDATE tbscores set '$field' = '$newvalue' where nick = ?;");
-            $sth->bind_param(1, $nick);
+            $sth = $dbh->prepare("UPDATE tbscores set '$field' = '$newvalue' where lc_nick = ?;");
+            $sth->bind_param(1, $lc_nick);
             my $rv2 = $sth->execute();
             if ( !$rv2 ) {
                 $irc->yield( privmsg => $nick => "Unable to set timebomb $field: " . $sth->errstr );
@@ -2511,10 +2513,12 @@ sub timebomb_stats_set_field {
 sub timebomb_stats_init_user {
     my @prams    = @_;
     my $nick     = $prams[0];
+    my $lc_nick  = lc_irc($nick);
 
-    my $query = q{INSERT INTO tbscores (nick, wins, cheats, losses, timeouts, duds, doubles, backfires) values (?, 0, 0, 0, 0, 0, 0, 0)};
+    my $query = q{INSERT INTO tbscores (nick, lc_nick, wins, cheats, losses, timeouts, duds, doubles, backfires) values (?, ?, 0, 0, 0, 0, 0, 0, 0)};
     $sth   = $dbh->prepare($query);
     $sth->bind_param( 1, $nick );
+    $sth->bind_param( 2, $lc_nick );
     my $rv3 = $sth->execute();
     if ( !$rv3 ) {
         $irc->yield( privmsg => $nick => "Unable to init timebomb user $nick: " . $sth->errstr );
@@ -2526,6 +2530,7 @@ sub timebomb_stats_print {
     my $request = $prams[0];
     my $channel = $prams[1];
     my $nick    = $prams[2];
+    $request = lc_irc($request);
 
     if ($request =~ /wins|cheats|losses|timeouts|duds|doubles|backfires/i) {
         my $sth      = $dbh->prepare("SELECT count(*) from tbscores;");
@@ -2555,10 +2560,10 @@ sub timebomb_stats_print {
         return;
     } else {
         if ($request eq "") {
-            $request = $nick
+            $request = lc_irc($nick);
         }
 
-        my $sth      = $dbh->prepare("SELECT count(*) from tbscores where nick =?;");
+        my $sth      = $dbh->prepare("SELECT count(*) from tbscores where lc_nick =?;");
         $sth->bind_param(1, $request);
         my $rv1      = $sth->execute();
         my $res      = $sth->fetchrow_hashref;
@@ -2568,7 +2573,7 @@ sub timebomb_stats_print {
             return;
         }
 
-        $sth         = $dbh->prepare("SELECT nick,* from tbscores where nick =?;");
+        $sth         = $dbh->prepare("SELECT nick,* from tbscores where lc_nick = ?;");
         $sth->bind_param(1, $request);
         my $rv       = $sth->execute();
         if ( !$rv ) {
