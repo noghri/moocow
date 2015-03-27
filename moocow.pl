@@ -2575,7 +2575,7 @@ sub timebomb_stats_print {
             $irc->yield( privmsg => $nick => "Unable to get timebomb scores: " . $sth->errstr );
         } else {
             my $res      = $sth->fetchrow_hashref;
-            my $total = int($res->{'wins'}) + int($res->{'cheats'}) + int($res->{'losses'}) + int($res->{'timeouts'}) + int($res->{'duds'}) + int($res->{'doubles'}) + int($res->{'backfires'});
+            my $total = int($res->{'wins'}) + int($res->{'cheats'}) + int($res->{'losses'}) + int($res->{'timeouts'}) + int($res->{'duds'});
             $irc->yield( privmsg => $channel => "$res->{'nick'}: wins($res->{'wins'}), cheats($res->{'cheats'}), losses($res->{'losses'}), timeouts($res->{'timeouts'}), duds($res->{'duds'}), double-whammies($res->{'doubles'}), backfires($res->{'backfires'}), total($total)");
         }
     }
