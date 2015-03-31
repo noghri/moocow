@@ -656,12 +656,22 @@ sub random_joke {
     my $rssurl = "http://www.jokesareawesome.com/rss/random/";
     my $xml = get($rssurl);
     my $rss = new XML::RSS;
+    my $content = "";
     $rss->parse($xml);
     foreach my $item ( @{ $rss->{'items'} } ) {
         my $title = $item->{'title'};
-        my $content  = $item->{'content'}->{'encoded'};
-        $irc->yield( privmsg => $channel => "$content" );
+        $content  = $item->{'content'}->{'encoded'};
     }
+        (my $decoded = $content) =~ s/<[^>]*>//gs;
+        $decoded =~ y/\n//d;
+        my $i = length($decoded);
+        if ($i > 50) {
+                random_joke(@_);
+        }
+        else {
+        my @output = ( $decoded =~ m/.{50}/g );
+        $irc->yield( privmsg => $channel => "$decoded" );
+        }
 }
 
 sub norris_joke {
